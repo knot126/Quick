@@ -1,0 +1,14 @@
+{
+	"linux": {
+		"prebuild": [
+			"rm -r ./source/util",
+			"cp -r ../Melon/source ./source/util"
+		],
+		"compiler": "clang",
+		"folders": ["source"],
+		"includes": ["source"],
+		"links": ["m", "pthread", "SDL2"],
+		"defines": ["MELON_CRYPTOGRAPHY_RANDOM"],
+		"output": "engine"
+	}
+}
