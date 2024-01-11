@@ -174,7 +174,6 @@ def main():
 	# Create the dirs we need if they don't exist
 	create_folder("temp", mode = 0o755)
 	create_folder("temp/outputs", mode = 0o755)
-	create_folder("temp/runes", mode = 0o755)
 	
 	# I don't know where else to put this stuff (includes and defines) so im
 	# just putting them here.
