@@ -8,7 +8,7 @@ int main(int argc, const char *argv[]) {
 	
 	DgWindow window;
 	
-	uint32_t status = DgWindowInit(&window, "Game Engine", (DgVec2I) {1280, 720});
+	DgError status = DgWindowInit(&window, "Game Engine", (DgVec2I) {1280, 720});
 	
 	if (status) {
 		DgLog(DG_LOG_ERROR, "There was a problem opening the window");
@@ -18,7 +18,7 @@ int main(int argc, const char *argv[]) {
 	DgBitmap bitmap;
 	
 	// TODO fix bitmap so it uses DgError's
-	status = DgBitmapInit(&bitmap, 1280, 720, 3);
+	status = DgBitmapInit(&bitmap, (DgVec2I) {1280, 720}, 3);
 	
 	if (status) {
 		DgLog(DG_LOG_ERROR, "Could not init bitmap");
