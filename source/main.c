@@ -1,11 +1,8 @@
 #include "util/melon.h"
-#include "util/log.h"
-#include "util/time.h"
-#include "util/pseudorandom.h"
 
-int main(int argc, const char *argv[]) {
-	DgInitTime();
-	
+#include "rendroar/rendroar.h"
+
+int twdp() {
 	DgWindow window;
 	
 	DgError status = DgWindowInit(&window, "Game Engine", (DgVec2I) {1280, 720});
@@ -47,6 +44,21 @@ int main(int argc, const char *argv[]) {
 	DgBitmapFree(&bitmap);
 	
 	DgWindowFree(&window);
+	
+	return 0;
+}
+
+int main(int argc, const char *argv[]) {
+	DgInitTime();
+	
+	DgError err;
+	RoContext roc;
+	
+	if ((err = RoContextCreate(&roc, (DgVec2I) {1280, 720}))) {
+		DgLog(DG_LOG_ERROR, "Failed to create GLES2 context: <0x%x>.", err);
+	}
+	
+	RoContextDestroy(&roc);
 	
 	return 0;
 }

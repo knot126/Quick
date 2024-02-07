@@ -6,8 +6,8 @@
 		],
 		"compiler": "clang",
 		"folders": ["source"],
-		"includes": ["source"],
-		"links": ["m", "pthread", "SDL2"],
+		"includes": ["source", "source/rendroar"],
+		"links": ["m", "pthread", "SDL2", "dl", "X11"],
 		"defines": ["DG_USE_SDL2", "MELON_CRYPTOGRAPHY_RANDOM"],
 		"output": "engine"
 	}
