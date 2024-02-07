@@ -139,7 +139,7 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 	return DG_ERROR_SUCCESS;
 }
 
-DgError RoDrawStart(RoContext * const this) {
+DgError RoDrawBegin(RoContext * const this) {
 	/**
 	 * Start the drawing process
 	 * 
@@ -154,6 +154,9 @@ DgError RoDrawEnd(RoContext * const this) {
 	/**
 	 * Finish the drawing process and swap front and back buffers
 	 */
+	
+	glClearColor(DgPrandFloat(), DgPrandFloat(), DgPrandFloat(), 1.0);
+	glClear(GL_COLOR_BUFFER_BIT);
 	
 	eglSwapBuffers(this->egl_display, this->egl_surface);
 	
@@ -170,7 +173,7 @@ DgError RoGetFrameData(RoContext * const this, size_t size, void *data, bool alp
 	 * @param alpha If alpha should be included
 	 */
 	
-	size_t req_size = 4 * this->size.x * this->size.y;
+	size_t req_size = (alpha ? 4 : 3) * this->size.x * this->size.y;
 	
 	if (size < req_size) {
 		return DG_ERROR_NOT_SAFE;

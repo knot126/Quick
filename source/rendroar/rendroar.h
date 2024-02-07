@@ -16,3 +16,7 @@ typedef struct {
 
 DgError RoContextCreate(RoContext * const context, DgVec2I size);
 void RoContextDestroy(RoContext * const context);
+
+DgError RoDrawBegin(RoContext * const this);
+DgError RoDrawEnd(RoContext * const this);
+DgError RoGetFrameData(RoContext * const this, size_t size, void *data, bool alpha);
