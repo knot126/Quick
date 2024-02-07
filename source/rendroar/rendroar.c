@@ -135,6 +135,7 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 	}
 	
 	DgLog(DG_LOG_INFO, "Using OpenGL ES %d.%d", GLAD_VERSION_MAJOR(gl_version), GLAD_VERSION_MINOR(gl_version));
+	DgLog(DG_LOG_INFO, "Graphics hardware: %s %s", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
 	
 	return DG_ERROR_SUCCESS;
 }
@@ -155,7 +156,13 @@ DgError RoDrawEnd(RoContext * const this) {
 	 * Finish the drawing process and swap front and back buffers
 	 */
 	
-	glClearColor(DgPrandFloat(), DgPrandFloat(), DgPrandFloat(), 1.0);
+	float r, g, b;
+	
+	r = 0.5 * DgSin(0.5 * DgTime()) + 0.5;
+	g = 0.5 * DgSin(0.25 * DgTime()) + 0.5;
+	b = 0.5 * DgSin(0.125 * DgTime()) + 0.5;
+	
+	glClearColor(r, g, b, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 	eglSwapBuffers(this->egl_display, this->egl_surface);

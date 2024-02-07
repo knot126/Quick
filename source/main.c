@@ -24,12 +24,11 @@ int main(int argc, const char *argv[]) {
 	
 	while (true) {
 		RoDrawBegin(&roc);
-		
-		DgLog(DG_LOG_INFO, "RoDrawEnd(&roc);");
 		RoDrawEnd(&roc);
 		
-		DgLog(DG_LOG_INFO, "DgLogError(RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, &bitmap.src, false));");
-		DgLogError(RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, bitmap.src, false));
+		if (err = RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, bitmap.src, false)) {
+			DgLog(DG_LOG_ERROR, "Error while getting frame data: %s.", DgErrorString(err));
+		}
 		
 		DgWindowStatus status = DgWindowUpdate(&window, &bitmap);
 		
