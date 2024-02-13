@@ -10,9 +10,71 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-DgError RoContextCreate(RoContext * const this, DgVec2I size) {
+static GLuint RoOpenGL_LoadShaderFromSource(GLenum type, const char *source) {
 	/**
-	 * Create a new context
+	 * Load a shader from source.
+	 * 
+	 * @param source Source of the shader to compile
+	 * @return shader handle on success, 0 on failure
+	 */
+	
+	GLuint shader;
+	GLint status;
+	
+	shader = glCreateShader(type);
+	
+	if (!shader) {
+		return 0;
+	}
+	
+	// We like to #define VERTEX or #define FRAGMENT based on the type
+	const char *source_real[] = {
+		(type == GL_VERTEX_SHADER) ? "#define VERTEX\n\n" : "#define FRAGMENT\n\n",
+		source,
+	};
+	
+	glShaderSource(shader, 2, source_real, NULL);
+	
+	glCompileShader(shader);
+	
+	// Get the status
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+	
+	if (!status) {
+		GLint error_length = 0;
+		
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_length);
+		
+		if (error_length > 0) {
+			char *error = DgAlloc(error_length);
+			
+			if (!error) {
+				DgLog(DG_LOG_ERROR, "Error while displaying shader compilation error message.");
+				goto L_DeepError;
+			}
+			
+			glGetShaderInfoLog(shader, error_length, NULL, error);
+			
+			DgLog(DG_LOG_ERROR, "Failed to compile shader:\n%s", error);
+			
+			DgFree(error);
+		}
+		else {
+			DgLog(DG_LOG_ERROR, "Failed to compile shader but no log output was given.");
+		}
+		
+		L_DeepError:
+		glDeleteShader(shader);
+		
+		return 0;
+	}
+	
+	return shader;
+}
+
+static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
+	/**
+	 * Initialise OpenGL for the new context
 	 * 
 	 * @warning You can only have one context at a time atm.
 	 * 
@@ -140,6 +202,36 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 	return DG_ERROR_SUCCESS;
 }
 
+DgError RoContextCreate(RoContext * const this, DgVec2I size) {
+	/**
+	 * Create a new context
+	 * 
+	 * @param this Context object
+	 * @param size Size of the image
+	 * @return Error code while initialising
+	 */
+	
+	DgError status = RoContextCreate_InitGL(this, size);
+	
+	if (status) {
+		return status;
+	}
+	
+	this->verticies = DgMemoryStreamCreate();
+	
+	if (!this->verticies) {
+		return DG_ERROR_FAILED;
+	}
+	
+	this->indexes = DgMemoryStreamCreate();
+	
+	if (!this->indexes) {
+		return DG_ERROR_FAILED;
+	}
+	
+	return DG_ERROR_SUCCESS;
+}
+
 DgError RoDrawBegin(RoContext * const this) {
 	/**
 	 * Start the drawing process
@@ -147,7 +239,13 @@ DgError RoDrawBegin(RoContext * const this) {
 	 * @note Only really does some basic housekeeping
 	 */
 	
-	return DG_ERROR_NOT_IMPLEMENTED;
+	DgMemoryStreamRewind(this->verticies);
+	DgMemoryStreamRewind(this->indexes);
+	
+	this->vertex_count = 0;
+	this->index_count = 0;
+	
+	return DG_ERROR_SUCCESS;
 }
 
 
@@ -156,13 +254,7 @@ DgError RoDrawEnd(RoContext * const this) {
 	 * Finish the drawing process and swap front and back buffers
 	 */
 	
-	float r, g, b;
-	
-	r = 0.5 * DgSin(0.5 * DgTime()) + 0.5;
-	g = 0.5 * DgSin(0.25 * DgTime()) + 0.5;
-	b = 0.5 * DgSin(0.125 * DgTime()) + 0.5;
-	
-	glClearColor(r, g, b, 1.0);
+	glClearColor(this->background.r, this->background.g, this->background.b, this->background.a);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 	eglSwapBuffers(this->egl_display, this->egl_surface);
