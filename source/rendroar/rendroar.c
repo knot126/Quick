@@ -10,67 +10,39 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-static GLuint RoOpenGL_LoadShaderFromSource(GLenum type, const char *source) {
-	/**
-	 * Load a shader from source.
-	 * 
-	 * @param source Source of the shader to compile
-	 * @return shader handle on success, 0 on failure
-	 */
-	
-	GLuint shader;
-	GLint status;
-	
-	shader = glCreateShader(type);
-	
-	if (!shader) {
-		return 0;
-	}
-	
-	// We like to #define VERTEX or #define FRAGMENT based on the type
-	const char *source_real[] = {
-		(type == GL_VERTEX_SHADER) ? "#define VERTEX\n\n" : "#define FRAGMENT\n\n",
-		source,
-	};
-	
-	glShaderSource(shader, 2, source_real, NULL);
-	
-	glCompileShader(shader);
-	
-	// Get the status
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-	
-	if (!status) {
-		GLint error_length = 0;
-		
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_length);
-		
-		if (error_length > 0) {
-			char *error = DgAlloc(error_length);
-			
-			if (!error) {
-				DgLog(DG_LOG_ERROR, "Error while displaying shader compilation error message.");
-				goto L_DeepError;
-			}
-			
-			glGetShaderInfoLog(shader, error_length, NULL, error);
-			
-			DgLog(DG_LOG_ERROR, "Failed to compile shader:\n%s", error);
-			
-			DgFree(error);
-		}
-		else {
-			DgLog(DG_LOG_ERROR, "Failed to compile shader but no log output was given.");
-		}
-		
-		L_DeepError:
-		glDeleteShader(shader);
-		
-		return 0;
-	}
-	
-	return shader;
-}
+#include "ro_program.part"
+
+const char *gRoDefaultShader = "";
+
+const RoOpenGLProgramLayoutFeild gRoDefaultShaderLayoutFeilds[] = {
+	(RoOpenGLProgramLayoutFeild) {
+		.offset = 0,
+		.name = "inPosition",
+		.components = 3,
+		.type = GL_FLOAT,
+		.normalise = GL_FALSE,
+	},
+	(RoOpenGLProgramLayoutFeild) {
+		.offset = sizeof(float) * 3,
+		.name = "inTextureCoords",
+		.components = 2,
+		.type = GL_FLOAT,
+		.normalise = GL_FALSE,
+	},
+	(RoOpenGLProgramLayoutFeild) {
+		.offset = sizeof(float) * 5,
+		.name = "inColour",
+		.components = 3,
+		.type = GL_UNSIGNED_BYTE,
+		.normalise = GL_TRUE,
+	},
+};
+
+const RoOpenGLProgramLayout *gRoDefaultShaderLayout = &(RoOpenGLProgramLayout) {
+	.vertex_size = sizeof(RoVertex),
+	.feild_count = 3,
+	.feilds = gRoDefaultShaderLayoutFeilds
+};
 
 static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	/**

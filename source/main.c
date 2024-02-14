@@ -26,7 +26,7 @@ int main(int argc, const char *argv[]) {
 		RoDrawBegin(&roc);
 		RoDrawEnd(&roc);
 		
-		if (err = RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, bitmap.src, false)) {
+		if ((err = RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, bitmap.src, false))) {
 			DgLog(DG_LOG_ERROR, "Error while getting frame data: %s.", DgErrorString(err));
 		}
 		
