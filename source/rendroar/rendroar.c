@@ -159,7 +159,18 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	
 	this->egl_context = egl_context;
 	
+	if (eglGetCurrentContext() != EGL_NO_CONTEXT) {
+		DgLog(DG_LOG_WARNING, "A current EGL context is already set.");
+	}
+	
 	eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
+	
+	EGLint egl_error = eglGetError();
+	
+	if (egl_error != EGL_SUCCESS) {
+		DgLog(DG_LOG_ERROR, "EGL error 0x%x while setting context as current for first time", egl_error);
+		return DG_ERROR_FAILED;
+	}
 	
 	// Finally load OpenGL ES 2.0
 	int gl_version = gladLoaderLoadGLES2();
@@ -240,6 +251,12 @@ void RoContextDestroy(RoContext * const this) {
 
 void RoContextMakeCurrent(RoContext *this) {
 	eglMakeCurrent(this->egl_display, this->egl_surface, this->egl_surface, this->egl_context);
+	
+	EGLint egl_error;
+	
+	if ((egl_error = eglGetError()) != EGL_SUCCESS) {
+		DgLog(DG_LOG_ERROR, "EGL error 0x%x while setting context as current", egl_error);
+	}
 }
 
 DgError RoDrawBegin(RoContext * const this) {
@@ -284,6 +301,13 @@ DgError RoDrawEnd(RoContext * const this) {
 	 * Finish the drawing process and swap front and back buffers
 	 */
 	
+	GLenum gl_error = glGetError();
+	
+	if (gl_error != GL_NO_ERROR) {
+		DgLog(DG_LOG_ERROR, "Not drawing due to previous unhandled OpenGL error: <0x%x>", gl_error);
+		return DG_ERROR_FAILED;
+	}
+	
 	RoContextMakeCurrent(this);
 	
 	glViewport(0, 0, this->size.x, this->size.y);
@@ -299,6 +323,8 @@ DgError RoDrawEnd(RoContext * const this) {
 	// Setup data stuff
 	RoVertex *buffer;
 	DgMemoryStreamGetPointersAndSize(this->verticies, NULL, (void *) &buffer);
+	
+	DgLog(DG_LOG_INFO, "Will draw %d verts", this->vertex_count);
 	
 	GLint inPosition = glGetAttribLocation(program, "inPosition");
 	
@@ -350,7 +376,21 @@ DgError RoDrawEnd(RoContext * const this) {
 	if (inTextureCoords >= 0) glDisableVertexAttribArray(inTextureCoords);
 	if (inColour >= 0) glDisableVertexAttribArray(inColour);
 	
+	gl_error = glGetError();
+	
+	if (gl_error != GL_NO_ERROR) {
+		DgLog(DG_LOG_ERROR, "Did not draw sucessfully: <0x%x>", gl_error);
+		return DG_ERROR_FAILED;
+	}
+	
 	eglSwapBuffers(this->egl_display, this->egl_surface);
+	
+	EGLint egl_error = eglGetError();
+	
+	if (egl_error != EGL_SUCCESS) {
+		DgLog(DG_LOG_ERROR, "EGL error 0x%x while swapping buffers", egl_error);
+		return DG_ERROR_FAILED;
+	}
 	
 	return DG_ERROR_SUCCESS;
 }
@@ -358,6 +398,11 @@ DgError RoDrawEnd(RoContext * const this) {
 DgError RoGetFrameData(RoContext * const this, size_t size, void *data, bool alpha) {
 	/**
 	 * Get the data for the front frame
+	 * 
+	 * @warning OpenGL ES does not support having alpha be false
+	 * 
+	 * @warning Due to how OpenGL handles textures the result will be flipped
+	 * upside down.
 	 * 
 	 * @param this Context
 	 * @param size Max size of the buffer

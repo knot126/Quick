@@ -37,11 +37,14 @@ static GLuint RoOpenGLLoadShaderFromSource(GLenum type, const char *source) {
 	
 	// We like to #define VERTEX or #define FRAGMENT based on the type
 	const char *source_real[] = {
+		"precision mediump float;\n",
 		(type == GL_VERTEX_SHADER) ? "#define VERTEX\n\n" : "#define FRAGMENT\n\n",
 		source,
 	};
 	
-	glShaderSource(shader, 2, source_real, NULL);
+	DgLog(DG_LOG_VERBOSE, "--------\n%s%s%s--------\n", source_real[0], source_real[1], source_real[2]);
+	
+	glShaderSource(shader, 3, source_real, NULL);
 	
 	glCompileShader(shader);
 	
