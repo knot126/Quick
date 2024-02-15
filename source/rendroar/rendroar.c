@@ -12,7 +12,7 @@
 
 #include "ro_program.part"
 
-const char *gRoDefaultShader = "";
+const char *gRoDefaultShader = "varying vec2 fTextureCoords;\nvarying vec4 fColour;\n\n#ifdef VERTEX\nattribute vec3 inPosition;\nattribute vec2 inTextureCoords;\nattribute vec4 inColour;\n\nvoid main() {\n\tgl_Position = vec4(inPosition, 1.0);\n\tfTextureCoords = inTextureCoords;\n\tfColour = inColour;\n}\n#endif\n\n#ifdef FRAGMENT\nvoid main() {\n\tgl_FragColor = fColour;\n}\n#endif\n";
 
 const RoOpenGLProgramLayoutFeild gRoDefaultShaderLayoutFeilds[] = {
 	(RoOpenGLProgramLayoutFeild) {
@@ -189,6 +189,19 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 		return status;
 	}
 	
+	this->program = DgAlloc(sizeof this->program);
+	
+	if (!this->program) {
+		return DG_ERROR_ALLOCATION_FAILED;
+	}
+	
+	status = RoOpenGLProgramInit(this->program, gRoDefaultShaderLayout, gRoDefaultShader);
+	
+	if (status) {
+		DgLog(DG_LOG_ERROR, "Failed to initialise program, status <0x%x>.", status);
+		return status;
+	}
+	
 	this->verticies = DgMemoryStreamCreate();
 	
 	if (!this->verticies) {
@@ -201,7 +214,32 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 		return DG_ERROR_FAILED;
 	}
 	
+	this->background = (DgColour) {0.5, 0.5, 0.5, 1.0};
+	
 	return DG_ERROR_SUCCESS;
+}
+
+void RoContextDestroy(RoContext * const this) {
+	/**
+	 * Destroy the context
+	 */
+	
+	RoOpenGLProgramFree(this->program);
+	DgFree(this->program);
+	
+	gladLoaderUnloadGLES2();
+	
+	eglDestroyContext(this->egl_display, this->egl_context);
+	eglDestroySurface(this->egl_display, this->egl_surface);
+	eglTerminate(this->egl_display);
+	
+	gladLoaderUnloadEGL();
+	
+	XCloseDisplay(this->display);
+}
+
+void RoContextMakeCurrent(RoContext *this) {
+	eglMakeCurrent(this->egl_display, this->egl_surface, this->egl_surface, this->egl_context);
 }
 
 DgError RoDrawBegin(RoContext * const this) {
@@ -220,14 +258,97 @@ DgError RoDrawBegin(RoContext * const this) {
 	return DG_ERROR_SUCCESS;
 }
 
+DgError RoDrawVerts(RoContext * const this, size_t count, RoVertex *verticies) {
+	/**
+	 * Append the given vertex data to the stream
+	 * 
+	 * @param this Context
+	 * @param count Number of verticies
+	 * @param verticies Vertex data
+	 * @return Error while drawing verticies
+	 */
+	
+	DgMemoryStreamWrite(this->verticies, sizeof *verticies * count, verticies);
+	
+	if (DgMemoryStreamError(this->verticies) != DG_MEMORY_STREAM_OKAY) {
+		return DG_ERROR_FAILED;
+	}
+	
+	this->vertex_count += count;
+	
+	return DG_ERROR_SUCCESS;
+}
 
 DgError RoDrawEnd(RoContext * const this) {
 	/**
 	 * Finish the drawing process and swap front and back buffers
 	 */
 	
+	RoContextMakeCurrent(this);
+	
+	glViewport(0, 0, this->size.x, this->size.y);
+	
+	// Clear the screen
 	glClearColor(this->background.r, this->background.g, this->background.b, this->background.a);
 	glClear(GL_COLOR_BUFFER_BIT);
+	
+	// Set the active program
+	GLuint program = this->program->program;
+	glUseProgram(program);
+	
+	// Setup data stuff
+	RoVertex *buffer;
+	DgMemoryStreamGetPointersAndSize(this->verticies, NULL, (void *) &buffer);
+	
+	GLint inPosition = glGetAttribLocation(program, "inPosition");
+	
+	if (inPosition >= 0) {
+		glEnableVertexAttribArray(inPosition);
+		glVertexAttribPointer(
+			inPosition,
+			3,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(RoVertex),
+			&buffer[0].x
+		);
+	}
+	
+	GLint inTextureCoords = glGetAttribLocation(program, "inTextureCoords");
+	
+	if (inTextureCoords >= 0) {
+		glEnableVertexAttribArray(inTextureCoords);
+		glVertexAttribPointer(
+			inTextureCoords,
+			2,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(RoVertex),
+			&buffer[0].u
+		);
+	}
+	
+	GLint inColour = glGetAttribLocation(program, "inColour");
+	
+	if (inColour >= 0) {
+		glEnableVertexAttribArray(inColour);
+		glVertexAttribPointer(
+			inColour,
+			4,
+			GL_UNSIGNED_BYTE,
+			GL_TRUE,
+			sizeof(RoVertex),
+			&buffer[0].r
+		);
+	}
+	
+	// Draw the arrays
+	glDrawArrays(GL_TRIANGLES, 0, this->vertex_count);
+	
+	// Undo setup
+	if (inPosition >= 0) glDisableVertexAttribArray(inPosition);
+	if (inTextureCoords >= 0) glDisableVertexAttribArray(inTextureCoords);
+	if (inColour >= 0) glDisableVertexAttribArray(inColour);
 	
 	eglSwapBuffers(this->egl_display, this->egl_surface);
 	
@@ -246,31 +367,18 @@ DgError RoGetFrameData(RoContext * const this, size_t size, void *data, bool alp
 	
 	size_t req_size = (alpha ? 4 : 3) * this->size.x * this->size.y;
 	
-	if (size < req_size) {
+	if (size < req_size || !data) {
 		return DG_ERROR_NOT_SAFE;
 	}
 	
 	glReadPixels(0, 0, this->size.x, this->size.y, alpha ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, data);
 	
-	if (glGetError() != GL_NO_ERROR) {
+	GLenum error = glGetError();
+	
+	if (error != GL_NO_ERROR) {
+		DgLog(DG_LOG_ERROR, "OpenGL error <0x%x> while getting frame data.", error);
 		return DG_ERROR_FAILED;
 	}
 	
 	return DG_ERROR_SUCCESS;
-}
-
-void RoContextDestroy(RoContext * const this) {
-	/**
-	 * Destroy the context
-	 */
-	
-	gladLoaderUnloadGLES2();
-	
-	eglDestroyContext(this->egl_display, this->egl_context);
-	eglDestroySurface(this->egl_display, this->egl_surface);
-	eglTerminate(this->egl_display);
-	
-	gladLoaderUnloadEGL();
-	
-	XCloseDisplay(this->display);
 }

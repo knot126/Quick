@@ -11,6 +11,8 @@ typedef struct {
 	uint8_t r, g, b, a;
 } RoVertex;
 
+typedef struct RoOpenGLProgram RoOpenGLProgram;
+
 typedef struct {
 	// Multi-frame state
 	Display *display;
@@ -21,6 +23,7 @@ typedef struct {
 	DgVec2I size;
 	
 	DgColour background;
+	struct RoOpenGLProgram *program;
 	
 	// Single frame state
 	DgMemoryStream *verticies;
@@ -35,3 +38,5 @@ void RoContextDestroy(RoContext * const context);
 DgError RoDrawBegin(RoContext * const this);
 DgError RoDrawEnd(RoContext * const this);
 DgError RoGetFrameData(RoContext * const this, size_t size, void *data, bool alpha);
+
+DgError RoDrawVerts(RoContext * const this, size_t count, RoVertex *verticies);

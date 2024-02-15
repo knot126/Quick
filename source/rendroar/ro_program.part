@@ -13,7 +13,7 @@ typedef struct {
 	const RoOpenGLProgramLayoutFeild *feilds;
 } RoOpenGLProgramLayout;
 
-typedef struct {
+typedef struct RoOpenGLProgram {
 	const RoOpenGLProgramLayout *layout;
 	GLuint vertex, fragment, program;
 } RoOpenGLProgram;
@@ -80,7 +80,7 @@ static GLuint RoOpenGLLoadShaderFromSource(GLenum type, const char *source) {
 	return shader;
 }
 
-static DgError RoOpenGLProgramInit(RoOpenGLProgram *this, const char *source, const RoOpenGLProgramLayout *layout) {
+static DgError RoOpenGLProgramInit(RoOpenGLProgram *this, const RoOpenGLProgramLayout *layout, const char *source) {
 	/**
 	 * Initialise a new program with it's source code
 	 */
@@ -143,27 +143,27 @@ static void RoOpenGLProgramFree(RoOpenGLProgram *this) {
 	glDeleteShader(this->fragment);
 }
 
-static void RoOpenGLProgramOn(RoOpenGLProgram *this) {
-	/**
-	 * Use a program
-	 */
-	
-	glUseProgram(this->program);
-	
-	for (size_t i = 0; i < this->layout->feild_count; i++) {
-		const RoOpenGLProgramLayoutFeild *f = &this->layout->feilds[i];
-		
-		GLint location = glGetAttribLocation(this->program, f->name);
-		
-		glVertexAttribPointer(
-			location,
-			f->components,
-			f->type,
-			f->normalise,
-			this->layout->vertex_size,
-			(void *) f->offset
-		);
-		
-		glEnableVertexAttribArray(location);
-	}
-}
+// static void RoOpenGLProgramOn(RoOpenGLProgram *this) {
+// 	/**
+// 	 * Use a program
+// 	 */
+// 	
+// 	glUseProgram(this->program);
+// 	
+// 	for (size_t i = 0; i < this->layout->feild_count; i++) {
+// 		const RoOpenGLProgramLayoutFeild *f = &this->layout->feilds[i];
+// 		
+// 		GLint location = glGetAttribLocation(this->program, f->name);
+// 		
+// 		glVertexAttribPointer(
+// 			location,
+// 			f->components,
+// 			f->type,
+// 			f->normalise,
+// 			this->layout->vertex_size - f->components,
+// 			(void *) f->offset
+// 		);
+// 		
+// 		glEnableVertexAttribArray(location);
+// 	}
+// }
