@@ -14,13 +14,15 @@
 
 const char *gRoDefaultShader = "varying vec2 fTextureCoords;\nvarying vec4 fColour;\n\n#ifdef VERTEX\nattribute vec3 inPosition;\nattribute vec2 inTextureCoords;\nattribute vec4 inColour;\n\nvoid main() {\n\tgl_Position = vec4(inPosition, 1.0);\n\tfTextureCoords = inTextureCoords;\n\tfColour = inColour;\n}\n#endif\n\n#ifdef FRAGMENT\nvoid main() {\n\tgl_FragColor = fColour;\n}\n#endif\n";
 
-static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
+static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size, void *ndisplay, void *window) {
 	/**
 	 * Initialise OpenGL for the new context
 	 * 
 	 * @warning You can only have one context at a time atm.
 	 * 
 	 * @param this context
+	 * @param size Size of the buffer to create (if window == NULL)
+	 * @param window Native window handle (or NULL if pbuffer)
 	 * @return error while initialising context
 	 */
 	
@@ -32,7 +34,7 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	}
 	
 	// Get the default X display
-	Display *display = XOpenDisplay(NULL);
+	Display *display = ndisplay ? (Display *) ndisplay : XOpenDisplay(NULL);
 	
 	if (!display) {
 		DgLog(DG_LOG_ERROR, "Failed to open X display.");
@@ -103,17 +105,24 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	
 	this->egl_config = egl_config;
 	
-	// Create an offscreen EGL surface
-	EGLint egl_surface_attr[] = {
-		EGL_WIDTH, size.x,
-		EGL_HEIGHT, size.y,
-		EGL_NONE,
-	};
+	// Create either a window or offscreen EGL surface
+	EGLSurface egl_surface;
 	
-	EGLSurface egl_surface = eglCreatePbufferSurface(egl_display, egl_config, egl_surface_attr);
+	if (!window) {
+		EGLint egl_surface_attr[] = {
+			EGL_WIDTH, size.x,
+			EGL_HEIGHT, size.y,
+			EGL_NONE,
+		};
+		
+		egl_surface = eglCreatePbufferSurface(egl_display, egl_config, egl_surface_attr);
+	}
+	else {
+		egl_surface = eglCreateWindowSurface(egl_display, egl_config, (EGLNativeWindowType) window, NULL);
+	}
 	
 	if (egl_surface == EGL_NO_SURFACE) {
-		DgLog(DG_LOG_ERROR, "Could not create EGL surface: status code %d", eglGetError());
+		DgLog(DG_LOG_ERROR, "Could not create EGL surface: status code <0x%x>", eglGetError());
 		return DG_ERROR_FAILED;
 	}
 	
@@ -159,16 +168,17 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	return DG_ERROR_SUCCESS;
 }
 
-DgError RoContextCreate(RoContext * const this, DgVec2I size) {
+static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *display, void *window) {
 	/**
 	 * Create a new context
 	 * 
 	 * @param this Context object
 	 * @param size Size of the image
+	 * @param window Native on-screen window object or NULL
 	 * @return Error code while initialising
 	 */
 	
-	DgError status = RoContextCreate_InitGL(this, size);
+	DgError status = RoContextCreate_InitGL(this, size, display, window);
 	
 	if (status) {
 		return status;
@@ -202,6 +212,14 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 	this->background = (DgColour) {0.5, 0.5, 0.5, 1.0};
 	
 	return DG_ERROR_SUCCESS;
+}
+
+DgError RoContextCreate(RoContext * const this, DgVec2I size) {
+	return RoContextCreate_Main(this, size, NULL, NULL);
+}
+
+DgError RoContextCreateDW(RoContext * const this, void *display, void *window) {
+	return RoContextCreate_Main(this, (DgVec2I) {0, 0}, display, window);
 }
 
 void RoContextDestroy(RoContext * const this) {
@@ -284,7 +302,12 @@ DgError RoDrawEnd(RoContext * const this) {
 	
 	RoContextMakeCurrent(this);
 	
-	glViewport(0, 0, this->size.x, this->size.y);
+	// Update the viewport
+	EGLint width, height;
+	eglQuerySurface(this->egl_display, this->egl_surface, EGL_WIDTH, &width);
+	eglQuerySurface(this->egl_display, this->egl_surface, EGL_HEIGHT, &height);
+	
+	glViewport(0, 0, width, height);
 	
 	// Clear the screen
 	glClearColor(this->background.r, this->background.g, this->background.b, this->background.a);

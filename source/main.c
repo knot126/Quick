@@ -15,9 +15,9 @@ int main(int argc, const char *argv[]) {
 	DgWindow window;
 	RoContext roc;
 	
-	if ((err = DgBitmapInit(&bitmap, (DgVec2I) {1280, 720}, 3 + DONT_WINDOW))) {
-		DgLog(DG_LOG_ERROR, "Failed to initialise bitmap.");
-	}
+	// if ((err = DgBitmapInit(&bitmap, (DgVec2I) {1280, 720}, 3 + DONT_WINDOW))) {
+	// 	DgLog(DG_LOG_ERROR, "Failed to initialise bitmap.");
+	// }
 	
 #if !DONT_WINDOW
 	if ((err = DgWindowInit(&window, "OpenGL ES testing", (DgVec2I) {1280, 720}))) {
@@ -25,7 +25,7 @@ int main(int argc, const char *argv[]) {
 	}
 #endif
 	
-	if ((err = RoContextCreate(&roc, (DgVec2I) {1280, 720}))) {
+	if ((err = RoContextCreateDW(&roc, DgWindowGetNativeDisplayHandle(&window), DgWindowGetNativeWindowHandle(&window)))) {
 		DgLog(DG_LOG_ERROR, "Failed to create GLES2 context: <0x%x>.", err);
 	}
 	
@@ -54,12 +54,12 @@ int main(int argc, const char *argv[]) {
 			DgLog(DG_LOG_ERROR, "Error while finishing draw: %s.", DgErrorString(err));
 		}
 		
-		if ((err = RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, bitmap.src, DONT_WINDOW))) {
-			DgLog(DG_LOG_ERROR, "Error while getting frame data: %s.", DgErrorString(err));
-		}
+		// if ((err = RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, bitmap.src, DONT_WINDOW))) {
+		// 	DgLog(DG_LOG_ERROR, "Error while getting frame data: %s.", DgErrorString(err));
+		// }
 		
 #if !DONT_WINDOW
-		DgWindowStatus status = DgWindowUpdate(&window, &bitmap);
+		DgWindowStatus status = DgWindowUpdate(&window, NULL);
 		
 		if (status == DG_WINDOW_SHOULD_CLOSE) {
 			break;
@@ -76,13 +76,13 @@ int main(int argc, const char *argv[]) {
 		DgSleep(sleeptime);
 	}
 	
-	DgBitmapWritePPM(&bitmap, "file://test.ppm");
+	// DgBitmapWritePPM(&bitmap, "file://test.ppm");
 	
 	RoContextDestroy(&roc);
 #if !DONT_WINDOW
 	DgWindowFree(&window);
 #endif
-	DgBitmapFree(&bitmap);
+	// DgBitmapFree(&bitmap);
 	
 	return 0;
 }

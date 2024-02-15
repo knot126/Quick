@@ -33,6 +33,7 @@ typedef struct {
 } RoContext;
 
 DgError RoContextCreate(RoContext * const context, DgVec2I size);
+DgError RoContextCreateDW(RoContext * const this, void *display, void *window);
 void RoContextDestroy(RoContext * const context);
 
 DgError RoDrawBegin(RoContext * const this);
