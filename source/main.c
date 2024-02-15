@@ -36,6 +36,8 @@ int main(int argc, const char *argv[]) {
 #else
 	while (true) {
 #endif
+		double start = DgTime();
+		
 		RoDrawBegin(&roc);
 		
 		RoVertex verts[] = {
@@ -64,8 +66,14 @@ int main(int argc, const char *argv[]) {
 		}
 #endif
 		
-		// while(true);
 		frames++;
+		
+		double delta = (DgTime() - start);
+		double sleeptime = (1.0/60.0) - delta;
+		
+		DgLog(DG_LOG_INFO, "Took %g ms, will sleep for %g ms", 1000.0 * delta, 1000.0 * sleeptime);
+		
+		DgSleep(sleeptime);
 	}
 	
 	DgBitmapWritePPM(&bitmap, "file://test.ppm");
