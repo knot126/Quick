@@ -14,36 +14,6 @@
 
 const char *gRoDefaultShader = "varying vec2 fTextureCoords;\nvarying vec4 fColour;\n\n#ifdef VERTEX\nattribute vec3 inPosition;\nattribute vec2 inTextureCoords;\nattribute vec4 inColour;\n\nvoid main() {\n\tgl_Position = vec4(inPosition, 1.0);\n\tfTextureCoords = inTextureCoords;\n\tfColour = inColour;\n}\n#endif\n\n#ifdef FRAGMENT\nvoid main() {\n\tgl_FragColor = fColour;\n}\n#endif\n";
 
-const RoOpenGLProgramLayoutFeild gRoDefaultShaderLayoutFeilds[] = {
-	(RoOpenGLProgramLayoutFeild) {
-		.offset = 0,
-		.name = "inPosition",
-		.components = 3,
-		.type = GL_FLOAT,
-		.normalise = GL_FALSE,
-	},
-	(RoOpenGLProgramLayoutFeild) {
-		.offset = sizeof(float) * 3,
-		.name = "inTextureCoords",
-		.components = 2,
-		.type = GL_FLOAT,
-		.normalise = GL_FALSE,
-	},
-	(RoOpenGLProgramLayoutFeild) {
-		.offset = sizeof(float) * 5,
-		.name = "inColour",
-		.components = 3,
-		.type = GL_UNSIGNED_BYTE,
-		.normalise = GL_TRUE,
-	},
-};
-
-const RoOpenGLProgramLayout *gRoDefaultShaderLayout = &(RoOpenGLProgramLayout) {
-	.vertex_size = sizeof(RoVertex),
-	.feild_count = 3,
-	.feilds = gRoDefaultShaderLayoutFeilds
-};
-
 static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	/**
 	 * Initialise OpenGL for the new context
@@ -55,6 +25,11 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	 */
 	
 	this->size = size;
+	
+	if (glGetString) {
+		DgLog(DG_LOG_WARNING, "OpenGL %s is already loaded... somehow.", glGetString(GL_VERSION));
+		return DG_ERROR_SUCCESS;
+	}
 	
 	// Get the default X display
 	Display *display = XOpenDisplay(NULL);
@@ -169,7 +144,6 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	
 	if (egl_error != EGL_SUCCESS) {
 		DgLog(DG_LOG_ERROR, "EGL error 0x%x while setting context as current for first time", egl_error);
-		return DG_ERROR_FAILED;
 	}
 	
 	// Finally load OpenGL ES 2.0
@@ -206,7 +180,7 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 		return DG_ERROR_ALLOCATION_FAILED;
 	}
 	
-	status = RoOpenGLProgramInit(this->program, gRoDefaultShaderLayout, gRoDefaultShader);
+	status = RoOpenGLProgramInit(this->program, gRoDefaultShader);
 	
 	if (status) {
 		DgLog(DG_LOG_ERROR, "Failed to initialise program, status <0x%x>.", status);

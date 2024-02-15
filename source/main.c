@@ -3,7 +3,7 @@
 
 #include "rendroar/rendroar.h"
 
-#define DONT_WINDOW 1
+#define DONT_WINDOW 0
 
 int main(int argc, const char *argv[]) {
 	DgInitTime();
@@ -19,25 +19,29 @@ int main(int argc, const char *argv[]) {
 		DgLog(DG_LOG_ERROR, "Failed to initialise bitmap.");
 	}
 	
-	if ((err = RoContextCreate(&roc, (DgVec2I) {1280, 720}))) {
-		DgLog(DG_LOG_ERROR, "Failed to create GLES2 context: <0x%x>.", err);
-	}
-	
 #if !DONT_WINDOW
 	if ((err = DgWindowInit(&window, "OpenGL ES testing", (DgVec2I) {1280, 720}))) {
 		DgLog(DG_LOG_ERROR, "Failed to initialise window.");
 	}
 #endif
 	
+	if ((err = RoContextCreate(&roc, (DgVec2I) {1280, 720}))) {
+		DgLog(DG_LOG_ERROR, "Failed to create GLES2 context: <0x%x>.", err);
+	}
+	
 	size_t frames = 0;
 	
+#if DONT_WINDOW
 	while (frames < 1) {
+#else
+	while (true) {
+#endif
 		RoDrawBegin(&roc);
 		
 		RoVertex verts[] = {
-			(RoVertex) {-0.9,  0.9, 1.0, 0.0, 0.0, 255, 0, 0, 255},
-			(RoVertex) { 0.9,  0.9, 1.0, 0.0, 0.0, 0, 255, 0, 255},
-			(RoVertex) { 0.0, -0.9, 1.0, 0.0, 0.0, 0, 0, 255, 255},
+			(RoVertex) {-0.5,  0.5, 1.0, 0.0, 0.0, 255, 0, 0, 255},
+			(RoVertex) { 0.5,  0.5, 1.0, 0.0, 0.0, 0, 255, 0, 255},
+			(RoVertex) { 0.0, -0.5, 1.0, 0.0, 0.0, 0, 0, 255, 255},
 		};
 		
 		if ((err = RoDrawVerts(&roc, 3, verts))) {

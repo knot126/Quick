@@ -83,14 +83,13 @@ static GLuint RoOpenGLLoadShaderFromSource(GLenum type, const char *source) {
 	return shader;
 }
 
-static DgError RoOpenGLProgramInit(RoOpenGLProgram *this, const RoOpenGLProgramLayout *layout, const char *source) {
+static DgError RoOpenGLProgramInit(RoOpenGLProgram *this, const char *source) {
 	/**
 	 * Initialise a new program with it's source code
 	 */
 	
 	GLint status;
 	
-	this->layout = layout;
 	this->vertex = RoOpenGLLoadShaderFromSource(GL_VERTEX_SHADER, source);
 	this->fragment = RoOpenGLLoadShaderFromSource(GL_FRAGMENT_SHADER, source);
 	
