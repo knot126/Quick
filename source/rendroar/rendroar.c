@@ -130,8 +130,8 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size) {
 	
 	// Create an offscreen EGL surface
 	EGLint egl_surface_attr[] = {
-		EGL_HEIGHT, size.x,
-		EGL_WIDTH, size.y,
+		EGL_WIDTH, size.x,
+		EGL_HEIGHT, size.y,
 		EGL_NONE,
 	};
 	
