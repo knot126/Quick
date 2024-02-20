@@ -41,6 +41,10 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size, void
 		return DG_ERROR_FAILED;
 	}
 	
+	if (ndisplay) {
+		this->flags |= RO_CONTEXT_FLAG_EXTERNAL_DISPLAY;
+	}
+	
 	this->display = display;
 	
 	// Note that we don't need to create any window.
@@ -238,7 +242,10 @@ void RoContextDestroy(RoContext * const this) {
 	
 	gladLoaderUnloadEGL();
 	
-	XCloseDisplay(this->display);
+	if (!(this->flags & RO_CONTEXT_FLAG_EXTERNAL_DISPLAY)) {
+		DgLog(DG_LOG_INFO, "Rendroar is destroying X display...");
+		XCloseDisplay(this->display);
+	}
 }
 
 void RoContextMakeCurrent(RoContext *this) {

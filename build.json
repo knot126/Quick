@@ -4,8 +4,6 @@
 			"rm -r ./source/util",
 			"cp -r ../Melon/source ./source/util"
 		],
-		"compiler": "clang",
-		"folders": ["source"],
 		"includes": ["source", "source/rendroar"],
 		"links": ["m", "pthread", "dl", "X11"],
 		"defines": ["DG_USE_X11", "MELON_CRYPTOGRAPHY_RANDOM"],

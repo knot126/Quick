@@ -5,6 +5,12 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+typedef uint32_t RoContextFlags;
+
+enum {
+	RO_CONTEXT_FLAG_EXTERNAL_DISPLAY = (1 << 0),
+};
+
 typedef struct {
 	float x, y, z;
 	float u, v;
@@ -20,6 +26,7 @@ typedef struct {
 	EGLConfig egl_config;
 	EGLSurface egl_surface;
 	EGLContext egl_context;
+	RoContextFlags flags;
 	DgVec2I size;
 	
 	DgColour background;
