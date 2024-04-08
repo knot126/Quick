@@ -57,20 +57,6 @@ int main(int argc, const char *argv[]) {
 		DgSleep(sleeptime);
 	}
 	
-	DgBitmap bitmap;
-	
-	if ((err = DgBitmapInit(&bitmap, (DgVec2I) {1280, 720}, 4))) {
-		DgLog(DG_LOG_ERROR, "Failed to initialise bitmap.");
-	}
-	
-	if ((err = RoGetFrameData(&roc, bitmap.chan * bitmap.width * bitmap.height, bitmap.src, true))) {
-		DgLog(DG_LOG_ERROR, "Error while getting frame data: %s.", DgErrorString(err));
-	}
-	
-	DgBitmapWritePPM(&bitmap, "file://test.ppm");
-	
-	DgBitmapFree(&bitmap);
-	
 	RoContextDestroy(&roc);
 	DgWindowFree(&window);
 	
