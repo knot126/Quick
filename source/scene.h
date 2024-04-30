@@ -4,11 +4,9 @@
  * In the engine, an entity is really just a script. Attributes are stored in
  * the script as script-local variables, and behaviour is implemented in the
  * script as functions.
- * 
- * Note that an entity can also be something like a 
  */
 typedef struct {
-	
+	TrScript script;
 } TrEntity;
 
 /**
