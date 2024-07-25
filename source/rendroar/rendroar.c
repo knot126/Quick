@@ -188,7 +188,7 @@ static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *
 		return status;
 	}
 	
-	this->program = DgAlloc(sizeof this->program);
+	this->program = DgMemoryAllocate(sizeof this->program);
 	
 	if (!this->program) {
 		return DG_ERROR_ALLOCATION_FAILED;
@@ -232,7 +232,7 @@ void RoContextDestroy(RoContext * const this) {
 	 */
 	
 	RoOpenGLProgramFree(this->program);
-	DgFree(this->program);
+	DgMemoryFree(this->program);
 	
 	gladLoaderUnloadGLES2();
 	

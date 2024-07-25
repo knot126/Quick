@@ -1,64 +1,31 @@
 #include "util/melon.h"
 #include "util/storage_filesystem.h"
 
-#include "rendroar/rendroar.h"
+#include "engine.h"
 
 int main(int argc, const char *argv[]) {
-	DgInitTime();
-	
-	DgStorageAddPool(NULL, DgFilesystemCreatePool("file", "."));
-	
 	DgError err;
-	DgWindow window;
-	RoContext roc;
+	DgArgs args;
 	
-	if ((err = DgWindowInit(&window, "OpenGL ES testing", (DgVec2I) {1280, 720}))) {
-		DgLog(DG_LOG_ERROR, "Failed to initialise window.");
+	if ((err = DgArgParse(&args, argc, argv))) {
+		return 0x01;
 	}
 	
-	if ((err = RoContextCreateDW(&roc, DgWindowGetNativeDisplayHandle(&window), DgWindowGetNativeWindowHandle(&window)))) {
-		DgLog(DG_LOG_ERROR, "Failed to create GLES2 context: <0x%x>.", err);
+	Engine *engine = DgMemoryAllocate(sizeof *engine);
+	
+	if ((err = EngineInit(engine))) {
+		DgMemoryFree(engine);
+		return 0x10;
 	}
 	
-	size_t frames = 0;
-	
-	while (!DgWindowShouldClose(&window)) {
-		double start = DgTime();
-		
-		RoDrawBegin(&roc);
-		
-		RoVertex verts[] = {
-			(RoVertex) {-0.5,  0.5, 1.0, 0.0, 0.0, 255, 0, 0, 255},
-			(RoVertex) { 0.5,  0.5, 1.0, 0.0, 0.0, 0, 255, 0, 255},
-			(RoVertex) { 0.0, -0.5, 1.0, 0.0, 0.0, 0, 0, 255, 255},
-		};
-		
-		if ((err = RoDrawVerts(&roc, 3, verts))) {
-			DgLog(DG_LOG_ERROR, "Error while adding verts: %s.", DgErrorString(err));
-		}
-		
-		if ((err = RoDrawEnd(&roc))) {
-			DgLog(DG_LOG_ERROR, "Error while finishing draw: %s.", DgErrorString(err));
-		}
-		
-		DgWindowStatus status = DgWindowUpdate(&window, NULL);
-		
-		if (status == DG_WINDOW_SHOULD_CLOSE) {
-			break;
-		}
-		
-		frames++;
-		
-		double delta = (DgTime() - start);
-		double sleeptime = (1.0/60.0) - delta;
-		
-		DgLog(DG_LOG_INFO, "Took %g ms, will sleep for %g ms", 1000.0 * delta, 1000.0 * sleeptime);
-		
-		DgSleep(sleeptime);
+	if ((err = EngineRun(engine))) {
+		DgMemoryFree(engine);
+		return 0x20;
 	}
 	
-	RoContextDestroy(&roc);
-	DgWindowFree(&window);
+	int ret = EngineFree(engine);
 	
-	return 0;
+	DgMemoryFree(engine);
+	
+	return ret;
 }

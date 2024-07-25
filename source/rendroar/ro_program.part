@@ -57,7 +57,7 @@ static GLuint RoOpenGLLoadShaderFromSource(GLenum type, const char *source) {
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_length);
 		
 		if (error_length > 0) {
-			char *error = DgAlloc(error_length);
+			char *error = DgMemoryAllocate(error_length);
 			
 			if (!error) {
 				DgLog(DG_LOG_ERROR, "Error while displaying shader compilation error message.");
@@ -68,7 +68,7 @@ static GLuint RoOpenGLLoadShaderFromSource(GLenum type, const char *source) {
 			
 			DgLog(DG_LOG_ERROR, "Failed to compile shader:\n%s", error);
 			
-			DgFree(error);
+			DgMemoryFree(error);
 		}
 		else {
 			DgLog(DG_LOG_ERROR, "Failed to compile shader but no log output was given.");
@@ -113,7 +113,7 @@ static DgError RoOpenGLProgramInit(RoOpenGLProgram *this, const char *source) {
 		glGetProgramiv(this->program, GL_INFO_LOG_LENGTH, &error_length);
 		
 		if (error_length > 0) {
-			char *error = DgAlloc(error_length);
+			char *error = DgMemoryAllocate(error_length);
 			
 			if (!error) {
 				DgLog(DG_LOG_ERROR, "Error while displaying program link error message.");
@@ -124,7 +124,7 @@ static DgError RoOpenGLProgramInit(RoOpenGLProgram *this, const char *source) {
 			
 			DgLog(DG_LOG_ERROR, "Failed to link program:\n%s", error);
 			
-			DgFree(error);
+			DgMemoryFree(error);
 		}
 		else {
 			DgLog(DG_LOG_ERROR, "Failed to link program but no log output was given.");
