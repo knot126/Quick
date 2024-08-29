@@ -13,7 +13,7 @@ int main(int argc, const char *argv[]) {
 	
 	Engine *engine = DgMemoryAllocate(sizeof *engine);
 	
-	if ((err = EngineInit(engine))) {
+	if ((err = EngineInit(engine, &args))) {
 		DgMemoryFree(engine);
 		return 0x10;
 	}

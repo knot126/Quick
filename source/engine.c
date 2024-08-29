@@ -4,11 +4,11 @@
 
 #include "engine.h"
 
-DgError EngineInit(Engine *this, ) {
+DgError EngineInit(Engine *this, DgArgs *args) {
 	DgInitTime();
 	
 	DgStorageAddPool(NULL, DgFilesystemCreatePool("file", "."));
-	DgStorageAddPool(NULL, DgFilesystemCreatePool("assets", "."));
+	DgStorageAddPool(NULL, DgFilesystemCreatePool("assets", DgArgGetValue(args, "assets")));
 	
 	DgError err;
 	

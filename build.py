@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import sys
 import os, os.path
@@ -6,6 +6,9 @@ import shutil
 import json
 import hashlib
 import pathlib
+import multiprocessing
+
+NUM_CORES = multiprocessing.cpu_count()
 
 def load_build_config(profile = "default"):
 	"""
@@ -164,6 +167,15 @@ def which_cc():
 	
 	return None
 
+def mapped_do_hashing(compiler, defines, include, config_includes, filename):
+	if (os.name != "nt"):
+		print(f"\033[36m[Process file: \"{filename}\"]\033[m")
+		return (filename, hash_command_output(f"{compiler} -E -Wno-c2x-extensions {filename} {defines} {include}"))
+	else:
+		# NT has slow Popen so fuck that
+		print(f"\033[36m[Process file: \"{filename}\"]\033[m")
+		return (filename, hash_preprocessed_file(filename, config_includes))
+
 def main():
 	if (sys.platform == "win32"):
 		os.system("cls")
@@ -212,7 +224,7 @@ def main():
 	print(f"\033[35m[C compiler: {compiler}]\033[0m")
 	
 	# Enumerate files to build
-	print(f"\033[36m[Enumerate and hash files]\033[m")
+	print(f"\033[36m[Enumerate and hash files on {NUM_CORES} cores]\033[m")
 	
 	files = []
 	
@@ -228,15 +240,8 @@ def main():
 	# hash!
 	hashes = {}
 	
-	if (os.name != "nt"):
-		for filename in files:
-			print(f"\033[36m[Process file: \"{filename}\"]\033[m")
-			hashes[filename] = hash_command_output(f"{compiler} -E -Wno-c2x-extensions {filename} {defines} {include}")
-	else:
-		# NT has slow Popen so fuck that
-		for filename in files:
-			print(f"\033[36m[Process file: \"{filename}\"]\033[m")
-			hashes[filename] = hash_preprocessed_file(filename, config["includes"])
+	with multiprocessing.Pool(NUM_CORES) as p:
+		hashes = dict(p.starmap(mapped_do_hashing, [(compiler, defines, include, config["includes"], fn) for fn in files]))
 	
 	# Build changed files
 	print(f"\033[36m[Build items]\033[m")
