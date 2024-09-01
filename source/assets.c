@@ -5,6 +5,8 @@
 #include "assets.h"
 #include "common.h"
 #include "util/error.h"
+#include "util/string.h"
+#include "util/table.h"
 
 DgError AssetManagerInit(AssetManager *this) {
 	if (DgTableInit(&this->types)) {
@@ -43,28 +45,40 @@ DgError AssetManagerAddLoader(AssetManager *this, const char *ext, AssetLoader *
 	 * allocated.
 	 */
 	
-	return DgTableSetPointer(&this->loaders, ext, (void *) loader);
+	return DgTableSetPointer(&this->loaders, ext ? ext : "", (void *) loader);
 }
 
-static Asset AssetManager_GetAlreadyLoadedAsset(AssetManager *this, const char *name) {
+static Asset AssetManager_GetAlreadyLoadedAsset(AssetManager *this, AssetTypeName type, const char *name) {
 	/**
-	 * Get an already loaded asset if available.
+	 * Get an already loaded asset if available and its of the matching type.
 	 */
+	
+	DgLog(DG_LOG_INFO, "AssetManager_GetAlreadyLoadedAsset(<this>, %s, %s)", type, name);
 	
 	void *asset = DgTableGetPointer(&this->assets, name);
 	
 	if (asset) {
-		return (Asset)(asset + sizeof(Asset_base));
+		Asset_base *ab = (Asset_base *) asset;
+		
+		if (DgStringEqual(ab->type, type)) {
+			ab->refs++;
+			return (Asset)(asset + sizeof(Asset_base));
+		}
+		else {
+			return NULL;
+		}
 	}
 	else {
 		return NULL;
 	}
 }
 
-static Asset AssetManger_LoadNewAsset(AssetManager *this, const char *name) {
+static Asset AssetManager_LoadNewAsset(AssetManager *this, AssetTypeName type, const char *name) {
 	/**
 	 * Really load an asset, assuming the it doesn't exist already.
 	 */
+	
+	DgLog(DG_LOG_INFO, "AssetManager_LoadNewAsset(<this>, %s, %s)", type, name);
 	
 	size_t size;
 	void *data;
@@ -86,10 +100,10 @@ static Asset AssetManger_LoadNewAsset(AssetManager *this, const char *name) {
 			continue;
 		}
 		
-		AssetLoader *candidate_loader = (AssetLoader *) value->data.asPointer;
+		AssetLoader *cand = (AssetLoader *) value->data.asPointer;
 		
-		if (DgStringEndsWith(name, key->data.asString)) {
-			loader = candidate_loader;
+		if (DgStringEqual(cand->type, type) && DgStringEndsWith(name, key->data.asString)) {
+			loader = cand;
 			break;
 		}
 	}
@@ -136,16 +150,53 @@ static Asset AssetManger_LoadNewAsset(AssetManager *this, const char *name) {
 	}
 }
 
-Asset AssetManagerLoad(AssetManager *this, const char *name) {
+Asset AssetManagerLoad(AssetManager *this, AssetTypeName type, const char *name) {
 	/**
 	 * Try to load an asset from the asset manager.
 	 */
 	
-	Asset asset = AssetManager_GetAlreadyLoadedAsset(this, name);
+	Asset asset = AssetManager_GetAlreadyLoadedAsset(this, type, name);
 	
 	if (asset) {
 		return asset;
 	}
 	
-	return AssetManger_LoadNewAsset(this, name);
+	return AssetManager_LoadNewAsset(this, type, name);
+}
+
+static void AssetManager_UnloadAssetByName(AssetManager *this, const char *name) {
+	/**
+	 * Free an asset
+	 */
+	
+	Asset_base *asset = DgTableGetPointer(&this->assets, name);
+	
+	if (asset) {
+		AssetType *type = DgTableGetPointer(&this->types, asset->type);
+		
+		if (type->release) {
+			type->release(((void *) asset) + sizeof(Asset_base));
+		}
+		
+		DgMemoryFree(asset);
+		
+		DgValue name_v = DgMakeStaticString(name);
+		if (DgTableRemove(&this->assets, &name_v)) {
+			DgLog(DG_LOG_WARNING, "Could not remove asset with name %s from assets table, might cause crash later on", name);
+		}
+	}
+}
+
+static const char *AssetManager_FindNameForAsset(AssetManager *this, Asset asset) {
+	/**
+	 * Find an asset name for the given asset
+	 */
+	
+	return NULL;
+}
+
+void AssetManagerRelease(AssetManager *this, Asset asset) {
+	/**
+	 * Decrement the reference count on the asset
+	 */
 }

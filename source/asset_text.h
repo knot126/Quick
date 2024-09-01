@@ -11,3 +11,5 @@ typedef struct Text_s {
 } Text_s;
 
 typedef const Text_s *Text;
+
+void RegisterTextAssetTypeAndLoader(AssetManager *this);

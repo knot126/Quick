@@ -7,6 +7,8 @@
 #include "common.h"
 #include "util/storage.h"
 
+typedef const char *AssetTypeName;
+
 typedef struct AssetType {
 	/**
 	 * A kind of asset, like Text, Image, Model or Script.
@@ -54,7 +56,7 @@ typedef struct Asset_base {
 	 * Base struct for assets, containing info common to all types of assets.
 	 */
 	
-	const char *type; // Index of the asset type
+	const char *type; // String containing the asset type
 	uint32_t refs; // Number of references to this asset that exist
 	uint32_t _pad16; // HACK does not work on 32bit
 } Asset_base;
@@ -66,8 +68,13 @@ typedef struct AssetManager {
 	 * The asset manager
 	 */
 	
-	DgStorage storage;
 	DgTable types;
 	DgTable loaders;
 	DgTable assets;
 } AssetManager;
+
+DgError AssetManagerInit(AssetManager *this);
+void AssetManagerFree(AssetManager *this);
+DgError AssetManagerAddType(AssetManager *this, AssetType *type);
+DgError AssetManagerAddLoader(AssetManager *this, const char *ext, AssetLoader *loader);
+Asset AssetManagerLoad(AssetManager *this, AssetTypeName type, const char *name);

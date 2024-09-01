@@ -23,3 +23,12 @@ AssetLoader gAlGenericText = {
 	.size = sizeof(Text_s),
 	.load = GenericTextAsset_Load,
 };
+
+void RegisterTextAssetTypeAndLoader(AssetManager *this) {
+	AssetManagerAddType(this, &gAtAssetText);
+	AssetManagerAddLoader(this, NULL, &gAlGenericText);
+}
+
+Text LoadText(AssetManager *this, const char *name) {
+	return (Text) AssetManagerLoad(this, "Text", name);
+}
