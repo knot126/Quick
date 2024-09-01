@@ -5,7 +5,6 @@
 #include "assets.h"
 #include "common.h"
 #include "util/error.h"
-#include <X11/X.h>
 
 DgError AssetManagerInit(AssetManager *this) {
 	if (DgTableInit(&this->types)) {
@@ -20,14 +19,12 @@ DgError AssetManagerInit(AssetManager *this) {
 		return DG_ERROR_FAILED;
 	}
 	
-	if (DgStorageInit(&this->storage)) {
-		return DG_ERROR_FAILED;
-	}
-	
 	return DG_ERROR_SUCCESS;
 }
 
 void AssetManagerFree(AssetManager *this) {
+	DgTableFree(&this->types, true);
+	DgTableFree(&this->loaders, true);
 	DgTableFree(&this->assets, true);
 }
 
@@ -81,18 +78,20 @@ static Asset AssetManger_LoadNewAsset(AssetManager *this, const char *name) {
 	}
 	
 	// Determine best loader
-	AssetLoader *loader;
+	AssetLoader *loader = NULL;
+	DgValue *key, *value;
 	
 	for (size_t i = 0; i < DgTableLength(&this->loaders); i++) {
-		DgValue *value;
-		DgTablePairAt(&this->loaders, i, NULL, &value);
-		loader = (AssetLoader *) value->data.asPointer;
-		
-		if (DgStringEndsWith(name, loader->type)) {
-			break;
+		if (DgTablePairAt(&this->loaders, i, &key, &value)) {
+			continue;
 		}
 		
-		loader = NULL;
+		AssetLoader *candidate_loader = (AssetLoader *) value->data.asPointer;
+		
+		if (DgStringEndsWith(name, key->data.asString)) {
+			loader = candidate_loader;
+			break;
+		}
 	}
 	
 	if (loader == NULL) {
