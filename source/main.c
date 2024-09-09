@@ -11,21 +11,21 @@ int main(int argc, const char *argv[]) {
 		return 0x01;
 	}
 	
-	Engine *engine = DgMemoryAllocate(sizeof *engine);
+	gEngine = DgMemoryAllocate(sizeof *gEngine);
 	
-	if ((err = EngineInit(engine, &args))) {
-		DgMemoryFree(engine);
+	if ((err = EngineInit(gEngine, &args))) {
+		DgMemoryFree(gEngine);
 		return 0x10;
 	}
 	
-	if ((err = EngineRun(engine))) {
-		DgMemoryFree(engine);
+	if ((err = EngineRun(gEngine))) {
+		DgMemoryFree(gEngine);
 		return 0x20;
 	}
 	
-	int ret = EngineFree(engine);
+	int ret = EngineFree(gEngine);
 	
-	DgMemoryFree(engine);
+	DgMemoryFree(gEngine);
 	
 	return ret;
 }

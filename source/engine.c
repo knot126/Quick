@@ -1,16 +1,27 @@
 #include "util/error.h"
 #include "util/melon.h"
 #include "util/storage_filesystem.h"
+#include "assets.h"
+#include "asset_text.h"
 
 #include "engine.h"
+
+Engine *gEngine;
 
 DgError EngineInit(Engine *this, DgArgs *args) {
 	DgInitTime();
 	
-	DgStorageAddPool(NULL, DgFilesystemCreatePool("file", "."));
+	DgStorageAddPool(NULL, DgFilesystemCreatePool(NULL, ""));
 	DgStorageAddPool(NULL, DgFilesystemCreatePool("assets", DgArgGetValue(args, "assets")));
 	
 	DgError err;
+	
+	if ((err = AssetManagerInit(&this->assman))) {
+		DgLog(DG_LOG_ERROR, "Failed to init asset manager!");
+		return err;
+	}
+	
+	RegisterTextAssetTypeAndLoader(&this->assman);
 	
 	if ((err = DgTableInit(&this->properties))) {
 		DgLog(DG_LOG_ERROR, "Failed to initialise engine properties table.");
@@ -32,8 +43,26 @@ DgError EngineInit(Engine *this, DgArgs *args) {
 	return DG_ERROR_SUCCESS;
 }
 
+const char *gMainScript = "main.lua";
+
+DgError EngineLoadMainScene(Engine *this) {
+	Text mainScriptText = LoadText(&this->assman, gMainScript);
+	
+	if (!mainScriptText) {
+		DgLog(DG_LOG_ERROR, "Could not load main script");
+		return DG_ERROR_FAILED;
+	}
+	
+	DgLog(DG_LOG_INFO, "Loaded main text asset: %s", gMainScript);
+	DgLog(DG_LOG_VERBOSE, "Length: %d\n%s", mainScriptText->length, mainScriptText->data);
+}
+
 DgError EngineRun(Engine *this) {
 	DgError err;
+	
+	if ((err = EngineLoadMainScene(this))) {
+		return err;
+	}
 	
 	while (!DgWindowShouldClose(&this->window)) {
 		double start = DgTime();

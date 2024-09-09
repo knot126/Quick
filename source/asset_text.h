@@ -13,3 +13,4 @@ typedef struct Text_s {
 typedef const Text_s *Text;
 
 void RegisterTextAssetTypeAndLoader(AssetManager *this);
+Text LoadText(AssetManager *this, const char *name);
