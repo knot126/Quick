@@ -43,7 +43,7 @@ DgError EngineInit(Engine *this, DgArgs *args) {
 	return DG_ERROR_SUCCESS;
 }
 
-const char *gMainScript = "main.lua";
+const char *gMainScript = "main.script";
 
 DgError EngineLoadMainScene(Engine *this) {
 	Text mainScriptText = LoadText(&this->assman, gMainScript);
@@ -53,8 +53,7 @@ DgError EngineLoadMainScene(Engine *this) {
 		return DG_ERROR_FAILED;
 	}
 	
-	DgLog(DG_LOG_INFO, "Loaded main text asset: %s", gMainScript);
-	DgLog(DG_LOG_VERBOSE, "Length: %d\n%s", mainScriptText->length, mainScriptText->data);
+	DgLog(DG_LOG_INFO, "Loaded main text asset: %s (size = %d)", gMainScript, mainScriptText->size);
 }
 
 DgError EngineRun(Engine *this) {
