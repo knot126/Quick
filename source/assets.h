@@ -71,10 +71,16 @@ typedef struct AssetManager {
 	DgTable types;
 	DgTable loaders;
 	DgTable assets;
+	const char *dir;
 } AssetManager;
+
+enum {
+	ASSET_SOURCE_FOLDER = 1,
+};
 
 DgError AssetManagerInit(AssetManager *this);
 void AssetManagerFree(AssetManager *this);
+DgError AssetManagerSetSource(AssetManager *this, int source_type, const char *path);
 DgError AssetManagerAddType(AssetManager *this, AssetType *type);
 DgError AssetManagerAddLoader(AssetManager *this, const char *ext, AssetLoader *loader);
 Asset AssetManagerLoad(AssetManager *this, AssetTypeName type, const char *name);

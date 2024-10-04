@@ -28,6 +28,28 @@ void AssetManagerFree(AssetManager *this) {
 	DgTableFree(&this->types, true);
 	DgTableFree(&this->loaders, true);
 	DgTableFree(&this->assets, true);
+	DgMemoryFree(this->dir);
+}
+
+DgError AssetManagerSetSource(AssetManager *this, int source_type, const char *path) {
+	/**
+	 * Set where to load assets from
+	 */
+	
+	if (source_type == ASSET_SOURCE_FOLDER) {
+		this->dir = DgStringDuplicate(path);
+		
+		if (!this->dir) {
+			return DG_ERROR_FAILED;
+		}
+		else {
+			DgLog(DG_LOG_INFO, "Asset directory is now: %s", this->dir);
+		}
+		
+		return DG_ERROR_SUCCESS;
+	}
+	
+	return DG_ERROR_FAILED;
 }
 
 DgError AssetManagerAddType(AssetManager *this, AssetType *type) {
@@ -83,13 +105,18 @@ static Asset AssetManager_LoadNewAsset(AssetManager *this, AssetTypeName type, c
 	size_t size;
 	void *data;
 	
+	char *path = DgStringConcatinateL(DgStringConcatinate(this->dir, "/"), name);
+	
 	// Load data
-	DgError status = DgStorageLoad(NULL, name, &size, &data);
+	DgError status = DgStorageLoad(NULL, path, &size, &data);
 	
 	if (status) {
-		DgLog(DG_LOG_ERROR, "Failed to load asset: %s", name);
+		DgLog(DG_LOG_ERROR, "Failed to load asset: %s [%s]", path, DgErrorString(status));
+		DgMemoryFree(path);
 		return NULL;
 	}
+	
+	DgMemoryFree(path);
 	
 	// Determine best loader
 	AssetLoader *loader = NULL;

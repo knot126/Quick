@@ -9,15 +9,22 @@
 Engine *gEngine;
 
 DgError EngineInit(Engine *this, DgArgs *args) {
+	DgError err;
+	
 	DgInitTime();
 	
-	DgStorageAddPool(NULL, DgFilesystemCreatePool(NULL, ""));
-	DgStorageAddPool(NULL, DgFilesystemCreatePool("assets", DgArgGetValue(args, "assets")));
-	
-	DgError err;
+	if (( err = DgStorageAddPool(NULL, DgFilesystemCreatePool(NULL, "")) )) {
+		DgLog(DG_LOG_ERROR, "Failed to setup fs pool.");
+		return err;
+	}
 	
 	if ((err = AssetManagerInit(&this->assman))) {
 		DgLog(DG_LOG_ERROR, "Failed to init asset manager!");
+		return err;
+	}
+	
+	if ((err = AssetManagerSetSource(&this->assman, ASSET_SOURCE_FOLDER, "assets"))) {
+		DgLog(DG_LOG_ERROR, "Failed to set assets source!");
 		return err;
 	}
 	
@@ -43,17 +50,17 @@ DgError EngineInit(Engine *this, DgArgs *args) {
 	return DG_ERROR_SUCCESS;
 }
 
-const char *gMainScript = "main.script";
+const char *gMainScriptPath = "main.script";
 
 DgError EngineLoadMainScene(Engine *this) {
-	Text mainScriptText = LoadText(&this->assman, gMainScript);
+	Text mainScriptText = LoadText(&this->assman, gMainScriptPath);
 	
 	if (!mainScriptText) {
 		DgLog(DG_LOG_ERROR, "Could not load main script");
 		return DG_ERROR_FAILED;
 	}
 	
-	DgLog(DG_LOG_INFO, "Loaded main text asset: %s (size = %d)", gMainScript, mainScriptText->size);
+	DgLog(DG_LOG_INFO, "Loaded main text asset: %s (size = %d)", gMainScriptPath, mainScriptText->size);
 }
 
 DgError EngineRun(Engine *this) {
