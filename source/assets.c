@@ -188,7 +188,13 @@ Asset AssetManagerLoad(AssetManager *this, AssetTypeName type, const char *name)
 		return asset;
 	}
 	
-	return AssetManager_LoadNewAsset(this, type, name);
+	asset = AssetManager_LoadNewAsset(this, type, name);
+	
+	if (!asset) {
+		DgRaise("ResourceLoadError", "Failed to load a resource");
+	}
+	
+	return asset;
 }
 
 static void AssetManager_UnloadAssetByName(AssetManager *this, const char *name) {

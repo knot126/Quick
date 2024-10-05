@@ -9,41 +9,19 @@
 Engine *gEngine;
 
 DgError EngineInit(Engine *this, DgArgs *args) {
-	DgError err;
-	
 	DgInitTime();
 	
-	if (( err = DgStorageAddPool(NULL, DgFilesystemCreatePool(NULL, "")) )) {
-		DgLog(DG_LOG_ERROR, "Failed to setup fs pool.");
-		return err;
-	}
+	DgStorageAddPool(NULL, DgFilesystemCreatePool(NULL, ""));
 	
-	if ((err = AssetManagerInit(&this->assman))) {
-		DgLog(DG_LOG_ERROR, "Failed to init asset manager!");
-		return err;
-	}
-	
-	if ((err = AssetManagerSetSource(&this->assman, ASSET_SOURCE_FOLDER, "assets"))) {
-		DgLog(DG_LOG_ERROR, "Failed to set assets source!");
-		return err;
-	}
-	
+	AssetManagerInit(&this->assman);
+	AssetManagerSetSource(&this->assman, ASSET_SOURCE_FOLDER, "assets");
 	RegisterTextAssetTypeAndLoader(&this->assman);
 	
-	if ((err = DgTableInit(&this->properties))) {
-		DgLog(DG_LOG_ERROR, "Failed to initialise engine properties table.");
-		return err;
-	}
+	DgTableInit(&this->properties);
 	
-	if ((err = DgWindowInit(&this->window, "OpenGL ES testing", (DgVec2I) {1280, 720}))) {
-		DgLog(DG_LOG_ERROR, "Failed to initialise window.");
-		return err;
-	}
+	DgWindowInit(&this->window, "OpenGL ES testing", (DgVec2I) {1280, 720});
 	
-	if ((err = RoContextCreateDW(&this->roc, DgWindowGetNativeDisplayHandle(&this->window), DgWindowGetNativeWindowHandle(&this->window)))) {
-		DgLog(DG_LOG_ERROR, "Failed to create GLES2 context: <0x%x>.", err);
-		return err;
-	}
+	RoContextCreateDW(&this->roc, DgWindowGetNativeDisplayHandle(&this->window), DgWindowGetNativeWindowHandle(&this->window));
 	
 	this->frames = 0;
 	
@@ -52,13 +30,8 @@ DgError EngineInit(Engine *this, DgArgs *args) {
 
 const char *gMainScriptPath = "main.script";
 
-DgError EngineLoadMainScene(Engine *this) {
+void EngineLoadMainScene(Engine *this) {
 	Text mainScriptText = LoadText(&this->assman, gMainScriptPath);
-	
-	if (!mainScriptText) {
-		DgLog(DG_LOG_ERROR, "Could not load main script");
-		return DG_ERROR_FAILED;
-	}
 	
 	DgLog(DG_LOG_INFO, "Loaded main text asset: %s (size = %d)", gMainScriptPath, mainScriptText->size);
 }
@@ -66,9 +39,7 @@ DgError EngineLoadMainScene(Engine *this) {
 DgError EngineRun(Engine *this) {
 	DgError err;
 	
-	if ((err = EngineLoadMainScene(this))) {
-		return err;
-	}
+	EngineLoadMainScene(this);
 	
 	while (!DgWindowShouldClose(&this->window)) {
 		double start = DgTime();

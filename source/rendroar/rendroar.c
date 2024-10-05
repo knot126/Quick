@@ -185,6 +185,7 @@ static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *
 	DgError status = RoContextCreate_InitGL(this, size, display, window);
 	
 	if (status) {
+		DgRaise("GLInitError", "Failed to initialise OpenGL");
 		return status;
 	}
 	
@@ -198,6 +199,7 @@ static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *
 	
 	if (status) {
 		DgLog(DG_LOG_ERROR, "Failed to initialise program, status <0x%x>.", status);
+		DgRaise("GLProgramError", "Failed to load main OpenGL program");
 		return status;
 	}
 	
