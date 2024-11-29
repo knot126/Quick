@@ -19,7 +19,7 @@ DgError EngineInit(Engine *this, DgArgs *args) {
 	
 	DgTableInit(&this->properties);
 	
-	DgWindowInit(&this->window, "OpenGL ES testing", (DgVec2I) {1280, 720});
+	DgWindowInit(&this->window, "New Engine", (DgVec2I) {1280, 720});
 	
 	RoContextCreateDW(&this->roc, DgWindowGetNativeDisplayHandle(&this->window), DgWindowGetNativeWindowHandle(&this->window));
 	
@@ -46,10 +46,12 @@ DgError EngineRun(Engine *this) {
 		
 		RoDrawBegin(&this->roc);
 		
+		float t = 2.0 * DgSin(0.25 * start);
+		
 		RoVertex verts[] = {
-			(RoVertex) {-0.5,  0.5, 1.0, 0.0, 0.0, 255, 0, 0, 255},
-			(RoVertex) { 0.5,  0.5, 1.0, 0.0, 0.0, 0, 255, 0, 255},
-			(RoVertex) { 0.0, -0.5, 1.0, 0.0, 0.0, 0, 0, 255, 255},
+			(RoVertex) {-0.5 * t, 0.5 * t, 1.0, 0.0, 0.0, 255, 0, 0, 255},
+			(RoVertex) { 0.5 * t, 0.5 * t, 1.0, 0.0, 0.0, 0, 255, 0, 255},
+			(RoVertex) { 0.0 * t, -0.5 * t, 1.0, 0.0, 0.0, 0, 0, 255, 255},
 		};
 		
 		if ((err = RoDrawVerts(&this->roc, 3, verts))) {
