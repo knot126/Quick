@@ -145,9 +145,34 @@ static void RoOpenGLProgramFree(RoOpenGLProgram *this) {
 	glDeleteShader(this->fragment);
 }
 
-static void RoOpenGLProgramSetGlobalInt(RoOpenGLProgram *this, const char *name, GLint val) {
+static DgError RoOpenGLProgramSetGlobalInt(RoOpenGLProgram *this, const char *name, GLint val) {
+	// Clear error
+	GLint err = glGetError();
+	if (err != GL_NO_ERROR) {
+		DgLog(DG_LOG_ERROR, "Not setting %s because of previous unhandled OpenGL error: <0x%x>", name, err);
+		return DG_ERROR_FAILED;
+	}
+	
+	// Get uniform location
 	GLint location = glGetUniformLocation(this->program, name);
+	
+	err = glGetError();
+	if (err != GL_NO_ERROR) {
+		DgLog(DG_LOG_ERROR, "Failed to get uniform location for %s: <0x%x>", name, err);
+		return DG_ERROR_FAILED;
+	}
+	
+	// Set it
+	glUseProgram(this->program);
 	glUniform1i(location, val);
+	
+	err = glGetError();
+	if (err != GL_NO_ERROR) {
+		DgLog(DG_LOG_ERROR, "Failed to set global integer %s to %d: <0x%x>", name, val, err);
+		return DG_ERROR_FAILED;
+	}
+	
+	return DG_ERROR_SUCCESS;
 }
 
 // static void RoOpenGLProgramOn(RoOpenGLProgram *this) {

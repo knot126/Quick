@@ -10,9 +10,9 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-#include "ro_program.part"
+#include "ro_program.h"
 
-const char *gRoDefaultShader = "varying vec2 fTextureCoords;\nvarying vec4 fColour;\n\n#ifdef VERTEX\nattribute vec3 inPosition;\nattribute vec2 inTextureCoords;\nattribute vec4 inColour;\n\nvoid main() {\n\tgl_Position = vec4(inPosition, 1.0);\n\tfTextureCoords = inTextureCoords;\n\tfColour = inColour;\n}\n#endif\n\n#ifdef FRAGMENT\nvoid main() {\n\tgl_FragColor = fColour;\n}\n#endif\n";
+const char *gRoDefaultShader = "varying vec2 fTextureCoords;\nvarying vec4 fColour;\n\n#ifdef VERTEX\nattribute vec3 inPosition;\nattribute vec2 inTextureCoords;\nattribute vec4 inColour;\n\nvoid main() {\n\tgl_Position = vec4(inPosition, 1.0);\n\tfTextureCoords = inTextureCoords;\n\tfColour = inColour;\n}\n#endif\n\n#ifdef FRAGMENT\nuniform sampler2D gTexture;\n\nvoid main() {\n\tgl_FragColor = fColour * texture2D(gTexture, fTextureCoords);\n}\n#endif\n";
 
 static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size, void *ndisplay, void *window) {
 	/**
@@ -204,6 +204,13 @@ static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *
 		return status;
 	}
 	
+// 	status = RoUploadDefaultTexture(this);
+// 	
+// 	if (status) {
+// 		DgRaise("TextureUploadError", "Could not upload default texture to gpu");
+// 		return status;
+// 	}
+	
 	this->program = DgMemoryAllocate(sizeof this->program);
 	
 	if (!this->program) {
@@ -218,7 +225,12 @@ static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *
 		return status;
 	}
 	
-	RoOpenGLProgramSetGlobalInt(this->program, "gTexture", 0);
+	status = RoOpenGLProgramSetGlobalInt(this->program, "gTexture", 0);
+	
+	if (status) {
+		DgRaise("GLProgramError", "Failed to set gTexture");
+		return status;
+	}
 	
 	this->buffer = DgMemoryStreamCreate();
 	
@@ -269,6 +281,12 @@ DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat forma
 	// Set clamp to edge by default or repeat texture if requested
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (flags & RO_TEXTURE_REPEAT) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (flags & RO_TEXTURE_REPEAT) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+	
+	GLenum gl_error = glGetError();
+	
+	if (gl_error != GL_NO_ERROR) {
+		return DG_ERROR_FAILED;
+	}
 	
 	// Store in map
 	DgValue key = DgMakeString(name);
@@ -392,7 +410,7 @@ DgError RoDrawVerts(RoContext * const this, size_t count, RoVertex *verticies, c
 }
 
 DgError RoDrawPlainVerts(RoContext * const this, size_t count, RoVertex *verticies) {
-	RoDrawVerts(this, count, verticies, NULL);
+	return RoDrawVerts(this, count, verticies, NULL);
 }
 
 DgError RoDrawEnd(RoContext * const this) {
@@ -435,17 +453,20 @@ DgError RoDrawEnd(RoContext * const this) {
 		
 		switch (cmd) {
 			case RO_CMD_STOP: {
+				DgLog(DG_LOG_VERBOSE, "Drawing.Stop");
 				drawing = false;
 				break;
 			}
 			
 			case RO_CMD_SET_TEXTURE: {
 				GLint id = DgMemoryStreamReadInt32(this->buffer);
+				DgLog(DG_LOG_VERBOSE, "Drawing.SetTexture %d", id);
 				RoSetTextureAsCurrentFromID(id);
 				break;
 			}
 			
 			case RO_CMD_CLEAR_TEXTURE: {
+				DgLog(DG_LOG_VERBOSE, "Drawing.ClearTexture");
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, this->default_texture_id);
 				break;
@@ -453,6 +474,7 @@ DgError RoDrawEnd(RoContext * const this) {
 			
 			case RO_CMD_DRAW_TRIS: {
 				size_t vertex_count = DgMemoryStreamReadUInt32(this->buffer);
+				DgLog(DG_LOG_VERBOSE, "Drawing.DrawTris %zu", vertex_count);
 				RoVertex *data = DgMemoryStreamGetHeadPointer(this->buffer);
 				DgMemoryStreamSetpos(this->buffer, DG_MEMORY_STREAM_CUR, sizeof(RoVertex) * vertex_count);
 				

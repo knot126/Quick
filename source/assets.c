@@ -108,7 +108,7 @@ static Asset AssetManager_LoadNewAsset(AssetManager *this, AssetTypeName type, c
 	char *path = DgStringConcatinateL(DgStringConcatinate(this->dir, "/"), name);
 	
 	// Load data
-	DgError status = DgStorageLoad(NULL, path, &size, &data);
+	DgError status = DgFileLoad(path, &size, &data);
 	
 	if (status) {
 		DgLog(DG_LOG_ERROR, "Failed to load asset: %s [%s]", path, DgErrorString(status));
