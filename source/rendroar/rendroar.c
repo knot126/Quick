@@ -172,6 +172,21 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size, void
 	return DG_ERROR_SUCCESS;
 }
 
+DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags);
+static GLuint RoLookupTextureId(RoContext *this, const char *name);
+
+static DgError RoUploadDefaultTexture(RoContext * const this) {
+	char data[3] = {255, 255, 255};
+	
+	if (RoUploadTexture(this, "__default__", RO_FORMAT_RGB, 1, 1, &data, 0)) {
+		return DG_ERROR_FAILED;
+	}
+	
+	this->default_texture_id = RoLookupTextureId(this, "__default__");
+	
+	return DG_ERROR_SUCCESS;
+}
+
 static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *display, void *window) {
 	/**
 	 * Create a new context
@@ -203,19 +218,21 @@ static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *
 		return status;
 	}
 	
-	this->verticies = DgMemoryStreamCreate();
+	RoOpenGLProgramSetGlobalInt(this->program, "gTexture", 0);
 	
-	if (!this->verticies) {
-		return DG_ERROR_FAILED;
-	}
+	this->buffer = DgMemoryStreamCreate();
 	
-	this->indexes = DgMemoryStreamCreate();
-	
-	if (!this->indexes) {
+	if (!this->buffer) {
 		return DG_ERROR_FAILED;
 	}
 	
 	this->background = (DgColour) {0.5, 0.5, 0.5, 1.0};
+	
+	status = DgTableInit(&this->textures);
+	
+	if (status) {
+		return DG_ERROR_FAILED;
+	}
 	
 	return DG_ERROR_SUCCESS;
 }
@@ -226,6 +243,40 @@ DgError RoContextCreate(RoContext * const this, DgVec2I size) {
 
 DgError RoContextCreateDW(RoContext * const this, void *display, void *window) {
 	return RoContextCreate_Main(this, (DgVec2I) {0, 0}, display, window);
+}
+
+DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags) {
+	/**
+	 * Upload a texture to the gpu
+	 */
+	
+	GLuint id;
+	
+	// Set unpack alignment to 1 if RGB or 4 if RGBA
+	glPixelStorei(GL_UNPACK_ALIGNMENT, (format == GL_RGBA) ? 4 : 1);
+	
+	// Generate texture name and bind texture
+	glGenTextures(1, &id);
+	glBindTexture(GL_TEXTURE_2D, id);
+	
+	// Push texture data
+	glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, pixels);
+	
+	// Use bilinear interpolation for normal textures, nearest for pixel art
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (flags & RO_PIXEL_ART) ? GL_NEAREST : GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (flags & RO_PIXEL_ART) ? GL_NEAREST : GL_LINEAR);
+	
+	// Set clamp to edge by default or repeat texture if requested
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (flags & RO_TEXTURE_REPEAT) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (flags & RO_TEXTURE_REPEAT) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+	
+	// Store in map
+	DgValue key = DgMakeString(name);
+	DgValue val = DgMakeInt32(id);
+	
+	DgTablePut(&this->textures, &key, &val);
+	
+	return DG_ERROR_SUCCESS;
 }
 
 void RoContextDestroy(RoContext * const this) {
@@ -250,7 +301,20 @@ void RoContextDestroy(RoContext * const this) {
 	}
 }
 
-void RoContextMakeCurrent(RoContext *this) {
+static DgError RoSetTextureAsCurrentFromID(GLuint id) {
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, id);
+	return DG_ERROR_SUCCESS;
+}
+
+static GLuint RoLookupTextureId(RoContext *this, const char *name) {
+	DgValue key = DgMakeStaticString(name);
+	DgValue *val = DgTableAt(&this->textures, &key);
+	
+	return val ? val->data.asInt32 : 0;
+}
+
+static void RoContextMakeCurrent(RoContext *this) {
 	eglMakeCurrent(this->egl_display, this->egl_surface, this->egl_surface, this->egl_context);
 	
 	EGLint egl_error;
@@ -260,6 +324,24 @@ void RoContextMakeCurrent(RoContext *this) {
 	}
 }
 
+static GLint RoUseVertexAttrib(GLint program, const char *name, GLint size, GLenum type, GLboolean normalise, GLsizei stride, const void *pointer) {
+	GLint location = glGetAttribLocation(program, name);
+	
+	if (location >= 0) {
+		glEnableVertexAttribArray(location);
+		glVertexAttribPointer(
+			location,
+			size,
+			type,
+			normalise,
+			stride,
+			pointer
+		);
+	}
+	
+	return location;
+}
+
 DgError RoDrawBegin(RoContext * const this) {
 	/**
 	 * Start the drawing process
@@ -267,34 +349,50 @@ DgError RoDrawBegin(RoContext * const this) {
 	 * @note Only really does some basic housekeeping
 	 */
 	
-	DgMemoryStreamRewind(this->verticies);
-	DgMemoryStreamRewind(this->indexes);
-	
-	this->vertex_count = 0;
-	this->index_count = 0;
+	DgMemoryStreamRewind(this->buffer);
 	
 	return DG_ERROR_SUCCESS;
 }
 
-DgError RoDrawVerts(RoContext * const this, size_t count, RoVertex *verticies) {
+enum {
+	RO_CMD_STOP,
+	RO_CMD_DRAW_TRIS,
+	RO_CMD_SET_TEXTURE,
+	RO_CMD_CLEAR_TEXTURE,
+};
+
+DgError RoDrawVerts(RoContext * const this, size_t count, RoVertex *verticies, const char *texture) {
 	/**
-	 * Append the given vertex data to the stream
+	 * Draw textured verticies to the screen
 	 * 
 	 * @param this Context
 	 * @param count Number of verticies
 	 * @param verticies Vertex data
+	 * @param texture Name of texture to use
 	 * @return Error while drawing verticies
 	 */
 	
-	DgMemoryStreamWrite(this->verticies, sizeof *verticies * count, verticies);
+	if (texture) {
+		DgMemoryStreamWriteUInt32(this->buffer, RO_CMD_SET_TEXTURE);
+		DgMemoryStreamWriteInt32(this->buffer, RoLookupTextureId(this, texture));
+	}
+	else {
+		DgMemoryStreamWriteUInt32(this->buffer, RO_CMD_CLEAR_TEXTURE);
+	}
 	
-	if (DgMemoryStreamError(this->verticies) != DG_MEMORY_STREAM_OKAY) {
+	DgMemoryStreamWriteUInt32(this->buffer, RO_CMD_DRAW_TRIS);
+	DgMemoryStreamWriteUInt32(this->buffer, count);
+	DgMemoryStreamWrite(this->buffer, sizeof *verticies * count, verticies);
+	
+	if (DgMemoryStreamError(this->buffer) != DG_MEMORY_STREAM_OKAY) {
 		return DG_ERROR_FAILED;
 	}
 	
-	this->vertex_count += count;
-	
 	return DG_ERROR_SUCCESS;
+}
+
+DgError RoDrawPlainVerts(RoContext * const this, size_t count, RoVertex *verticies) {
+	RoDrawVerts(this, count, verticies, NULL);
 }
 
 DgError RoDrawEnd(RoContext * const this) {
@@ -308,6 +406,10 @@ DgError RoDrawEnd(RoContext * const this) {
 		DgLog(DG_LOG_ERROR, "Not drawing due to previous unhandled OpenGL error: <0x%x>", gl_error);
 		return DG_ERROR_FAILED;
 	}
+	
+	// finish off buffer
+	DgMemoryStreamWriteUInt32(this->buffer, RO_CMD_STOP);
+	DgMemoryStreamRewind(this->buffer);
 	
 	RoContextMakeCurrent(this);
 	
@@ -326,69 +428,91 @@ DgError RoDrawEnd(RoContext * const this) {
 	GLuint program = this->program->program;
 	glUseProgram(program);
 	
-	// Setup data stuff
-	RoVertex *buffer;
-	DgMemoryStreamGetPointersAndSize(this->verticies, NULL, (void *) &buffer);
+	bool drawing = true;
 	
-	DgLog(DG_LOG_INFO, "Will draw %d verts", this->vertex_count);
-	
-	GLint inPosition = glGetAttribLocation(program, "inPosition");
-	
-	if (inPosition >= 0) {
-		glEnableVertexAttribArray(inPosition);
-		glVertexAttribPointer(
-			inPosition,
-			3,
-			GL_FLOAT,
-			GL_FALSE,
-			sizeof(RoVertex),
-			&buffer[0].x
-		);
+	while (drawing) {
+		uint32_t cmd = DgMemoryStreamReadUInt32(this->buffer);
+		
+		switch (cmd) {
+			case RO_CMD_STOP: {
+				drawing = false;
+				break;
+			}
+			
+			case RO_CMD_SET_TEXTURE: {
+				GLint id = DgMemoryStreamReadInt32(this->buffer);
+				RoSetTextureAsCurrentFromID(id);
+				break;
+			}
+			
+			case RO_CMD_CLEAR_TEXTURE: {
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, this->default_texture_id);
+				break;
+			}
+			
+			case RO_CMD_DRAW_TRIS: {
+				size_t vertex_count = DgMemoryStreamReadUInt32(this->buffer);
+				RoVertex *data = DgMemoryStreamGetHeadPointer(this->buffer);
+				DgMemoryStreamSetpos(this->buffer, DG_MEMORY_STREAM_CUR, sizeof(RoVertex) * vertex_count);
+				
+				GLint inPosition = RoUseVertexAttrib(
+					program,
+					"inPosition",
+					3,
+					GL_FLOAT,
+					GL_FALSE,
+					sizeof(RoVertex),
+					&data[0].x
+				);
+				
+				GLint inTextureCoords = RoUseVertexAttrib(
+					program,
+					"inTextureCoords",
+					2,
+					GL_FLOAT,
+					GL_FALSE,
+					sizeof(RoVertex),
+					&data[0].u
+				);
+				
+				GLint inColour = RoUseVertexAttrib(
+					program,
+					"inColour",
+					4,
+					GL_UNSIGNED_BYTE,
+					GL_TRUE,
+					sizeof(RoVertex),
+					&data[0].r
+				);
+				
+				// Draw the arrays
+				glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+				
+				// Undo setup
+				if (inPosition >= 0) glDisableVertexAttribArray(inPosition);
+				if (inTextureCoords >= 0) glDisableVertexAttribArray(inTextureCoords);
+				if (inColour >= 0) glDisableVertexAttribArray(inColour);
+				
+				gl_error = glGetError();
+				
+				if (gl_error != GL_NO_ERROR) {
+					DgLog(DG_LOG_ERROR, "Did not draw sucessfully: <0x%x>", gl_error);
+					return DG_ERROR_FAILED;
+				}
+				
+				break;
+			}
+			
+			default: {
+				DgLog(DG_LOG_ERROR, "Invalid draw buffer command");
+				return DG_ERROR_FAILED;
+				break;
+			}
+		}
 	}
 	
-	GLint inTextureCoords = glGetAttribLocation(program, "inTextureCoords");
-	
-	if (inTextureCoords >= 0) {
-		glEnableVertexAttribArray(inTextureCoords);
-		glVertexAttribPointer(
-			inTextureCoords,
-			2,
-			GL_FLOAT,
-			GL_FALSE,
-			sizeof(RoVertex),
-			&buffer[0].u
-		);
-	}
-	
-	GLint inColour = glGetAttribLocation(program, "inColour");
-	
-	if (inColour >= 0) {
-		glEnableVertexAttribArray(inColour);
-		glVertexAttribPointer(
-			inColour,
-			4,
-			GL_UNSIGNED_BYTE,
-			GL_TRUE,
-			sizeof(RoVertex),
-			&buffer[0].r
-		);
-	}
-	
-	// Draw the arrays
-	glDrawArrays(GL_TRIANGLES, 0, this->vertex_count);
-	
-	// Undo setup
-	if (inPosition >= 0) glDisableVertexAttribArray(inPosition);
-	if (inTextureCoords >= 0) glDisableVertexAttribArray(inTextureCoords);
-	if (inColour >= 0) glDisableVertexAttribArray(inColour);
-	
-	gl_error = glGetError();
-	
-	if (gl_error != GL_NO_ERROR) {
-		DgLog(DG_LOG_ERROR, "Did not draw sucessfully: <0x%x>", gl_error);
-		return DG_ERROR_FAILED;
-	}
-	
+	// Swap buffers
 	eglSwapBuffers(this->egl_display, this->egl_surface);
 	
 	EGLint egl_error = eglGetError();

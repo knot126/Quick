@@ -145,6 +145,11 @@ static void RoOpenGLProgramFree(RoOpenGLProgram *this) {
 	glDeleteShader(this->fragment);
 }
 
+static void RoOpenGLProgramSetGlobalInt(RoOpenGLProgram *this, const char *name, GLint val) {
+	GLint location = glGetUniformLocation(this->program, name);
+	glUniform1i(location, val);
+}
+
 // static void RoOpenGLProgramOn(RoOpenGLProgram *this) {
 // 	/**
 // 	 * Use a program

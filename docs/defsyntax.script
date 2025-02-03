@@ -1,0 +1,8 @@
+global syntax ifstmt :=
+    if ( <expr: exp> ) <block: blk>;
+    =>
+    compare_in_set(exp, {0, false, nil}) \;
+    goto_when_equal(:end-of-block) \;
+    do_block(blk) \;
+    label(:end-of-block) \;
+;

@@ -1,6 +1,6 @@
 #include "util/error.h"
 #include "util/melon.h"
-#include "util/storage_filesystem.h"
+// #include "util/storage_filesystem.h"
 #include "assets.h"
 #include "asset_text.h"
 
@@ -11,7 +11,7 @@ Engine *gEngine;
 DgError EngineInit(Engine *this, DgArgs *args) {
 	DgInitTime();
 	
-	DgStorageAddPool(NULL, DgFilesystemCreatePool(NULL, ""));
+	// DgStorageAddPool(NULL, DgFilesystemCreatePool(NULL, ""));
 	
 	AssetManagerInit(&this->assman);
 	AssetManagerSetSource(&this->assman, ASSET_SOURCE_FOLDER, "assets");
@@ -49,12 +49,12 @@ DgError EngineRun(Engine *this) {
 		float t = 2.0 * DgSin(0.25 * start);
 		
 		RoVertex verts[] = {
-			(RoVertex) {-0.5 * t, 0.5 * t, 1.0, 0.0, 0.0, 255, 0, 0, 255},
-			(RoVertex) { 0.5 * t, 0.5 * t, 1.0, 0.0, 0.0, 0, 255, 0, 255},
+			(RoVertex) {-0.5 * t,  0.5 * t, 1.0, 0.0, 0.0, 255, 0, 0, 255},
+			(RoVertex) { 0.5 * t,  0.5 * t, 1.0, 0.0, 0.0, 0, 255, 0, 255},
 			(RoVertex) { 0.0 * t, -0.5 * t, 1.0, 0.0, 0.0, 0, 0, 255, 255},
 		};
 		
-		if ((err = RoDrawVerts(&this->roc, 3, verts))) {
+		if ((err = RoDrawPlainVerts(&this->roc, 3, verts))) {
 			DgLog(DG_LOG_ERROR, "Error while adding verts: %s.", DgErrorString(err));
 		}
 		
@@ -73,7 +73,7 @@ DgError EngineRun(Engine *this) {
 		double delta = (DgTime() - start);
 		double sleeptime = (1.0/60.0) - delta;
 		
-		DgLog(DG_LOG_INFO, "Took %g ms, will sleep for %g ms", 1000.0 * delta, 1000.0 * sleeptime);
+		// DgLog(DG_LOG_INFO, "Frame %d took %g ms, will sleep for %g ms", this->frames, 1000.0 * delta, 1000.0 * sleeptime);
 		
 		DgSleep(sleeptime);
 	}
