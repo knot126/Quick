@@ -172,17 +172,17 @@ static DgError RoContextCreate_InitGL(RoContext * const this, DgVec2I size, void
 	return DG_ERROR_SUCCESS;
 }
 
-DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags);
+static GLint RoUploadTextureInternal(RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags);
 static GLuint RoLookupTextureId(RoContext *this, const char *name);
 
 static DgError RoUploadDefaultTexture(RoContext * const this) {
 	char data[3] = {255, 255, 255};
 	
-	if (RoUploadTexture(this, "__default__", RO_FORMAT_RGB, 1, 1, &data, 0)) {
+	this->default_texture_id = RoUploadTextureInternal(RO_FORMAT_RGB, 1, 1, &data, 0);
+	
+	if (this->default_texture_id < 0) {
 		return DG_ERROR_FAILED;
 	}
-	
-	this->default_texture_id = RoLookupTextureId(this, "__default__");
 	
 	return DG_ERROR_SUCCESS;
 }
@@ -204,12 +204,12 @@ static DgError RoContextCreate_Main(RoContext * const this, DgVec2I size, void *
 		return status;
 	}
 	
-// 	status = RoUploadDefaultTexture(this);
-// 	
-// 	if (status) {
-// 		DgRaise("TextureUploadError", "Could not upload default texture to gpu");
-// 		return status;
-// 	}
+	status = RoUploadDefaultTexture(this);
+	
+	if (status) {
+		DgRaise("TextureUploadError", "Could not upload default texture to gpu");
+		return status;
+	}
 	
 	this->program = DgMemoryAllocate(sizeof this->program);
 	
@@ -257,11 +257,7 @@ DgError RoContextCreateDW(RoContext * const this, void *display, void *window) {
 	return RoContextCreate_Main(this, (DgVec2I) {0, 0}, display, window);
 }
 
-DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags) {
-	/**
-	 * Upload a texture to the gpu
-	 */
-	
+static GLint RoUploadTextureInternal(RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags) {
 	GLuint id;
 	
 	// Set unpack alignment to 1 if RGB or 4 if RGBA
@@ -285,8 +281,18 @@ DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat forma
 	GLenum gl_error = glGetError();
 	
 	if (gl_error != GL_NO_ERROR) {
-		return DG_ERROR_FAILED;
+		return -1;
 	}
+	
+	return id;
+}
+
+DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags) {
+	/**
+	 * Upload a texture to the gpu
+	 */
+	
+	GLint id = RoUploadTextureInternal(format, width, height, pixels, flags);
 	
 	// Store in map
 	DgValue key = DgMakeString(name);
@@ -355,6 +361,9 @@ static GLint RoUseVertexAttrib(GLint program, const char *name, GLint size, GLen
 			stride,
 			pointer
 		);
+	}
+	else {
+		DgLog(DG_LOG_WARNING, "attrib %s not found", name);
 	}
 	
 	return location;
@@ -473,10 +482,26 @@ DgError RoDrawEnd(RoContext * const this) {
 			}
 			
 			case RO_CMD_DRAW_TRIS: {
+// 				glValidateProgram(program);
+// 				GLint status;
+// 				glGetProgramiv(program, GL_VALIDATE_STATUS, &status);
+// 				
+// 				if (status != GL_TRUE) {
+// 					DgLog(DG_LOG_WARNING, "Program validation failed!");
+// 					char log[2048];
+// 					glGetProgramInfoLog(program, sizeof(log), NULL, log);
+// 					DgLog(DG_LOG_WARNING, "%s", log);
+// 				}
+				
 				size_t vertex_count = DgMemoryStreamReadUInt32(this->buffer);
-				DgLog(DG_LOG_VERBOSE, "Drawing.DrawTris %zu", vertex_count);
 				RoVertex *data = DgMemoryStreamGetHeadPointer(this->buffer);
 				DgMemoryStreamSetpos(this->buffer, DG_MEMORY_STREAM_CUR, sizeof(RoVertex) * vertex_count);
+				
+				DgLog(DG_LOG_VERBOSE, "Drawing.DrawTris %zu <@ 0x%llx>", vertex_count, data);
+				
+				for (size_t i = 0; i < vertex_count; i++) {
+					DgLog(DG_LOG_VERBOSE, "%f %f %f   %f %f   %d %d %d %d", data[i].x, data[i].y, data[i].z, data[i].u, data[i].v, data[i].r, data[i].g, data[i].b, data[i].a);
+				}
 				
 				GLint inPosition = RoUseVertexAttrib(
 					program,

@@ -50,8 +50,8 @@ DgError EngineRun(Engine *this) {
 		
 		RoVertex verts[] = {
 			(RoVertex) {-0.5 * t,  0.5 * t, 1.0, 0.0, 0.0, 255, 0, 0, 255},
-			(RoVertex) { 0.5 * t,  0.5 * t, 1.0, 0.0, 0.0, 0, 255, 0, 255},
-			(RoVertex) { 0.0 * t, -0.5 * t, 1.0, 0.0, 0.0, 0, 0, 255, 255},
+			(RoVertex) { 0.5 * t,  0.5 * t, 1.0, 0.0, 1.0, 0, 255, 0, 255},
+			(RoVertex) { 0.0 * t, -0.5 * t, 1.0, 1.0, 0.0, 0, 0, 255, 255},
 		};
 		
 		if ((err = RoDrawPlainVerts(&this->roc, 3, verts))) {

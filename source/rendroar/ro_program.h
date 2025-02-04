@@ -42,7 +42,7 @@ static GLuint RoOpenGLLoadShaderFromSource(GLenum type, const char *source) {
 		source,
 	};
 	
-	DgLog(DG_LOG_VERBOSE, "--------\n%s%s%s--------\n", source_real[0], source_real[1], source_real[2]);
+	// DgLog(DG_LOG_VERBOSE, "--------\n%s%s%s--------\n", source_real[0], source_real[1], source_real[2]);
 	
 	glShaderSource(shader, 3, source_real, NULL);
 	
