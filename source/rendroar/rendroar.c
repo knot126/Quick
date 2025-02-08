@@ -308,17 +308,24 @@ void RoContextDestroy(RoContext * const this) {
 	 * Destroy the context
 	 */
 	
+	// Delete default texture
+	glDeleteTextures(1, &this->default_texture_id);
+	
+	// Delete program
 	RoOpenGLProgramFree(this->program);
 	DgMemoryFree(this->program);
 	
+	// Unload GLES
 	gladLoaderUnloadGLES2();
 	
+	// Terminate EGL
 	eglDestroyContext(this->egl_display, this->egl_context);
 	eglDestroySurface(this->egl_display, this->egl_surface);
 	eglTerminate(this->egl_display);
 	
 	gladLoaderUnloadEGL();
 	
+	// Destory builtin display
 	if (!(this->flags & RO_CONTEXT_FLAG_EXTERNAL_DISPLAY)) {
 		DgLog(DG_LOG_INFO, "Rendroar is destroying X display...");
 		XCloseDisplay(this->display);

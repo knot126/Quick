@@ -51,14 +51,13 @@ typedef struct {
 	
 	// Single frame state
 	DgMemoryStream *buffer;
-	// size_t vertex_count;
-	// DgMemoryStream *indexes;
-	// size_t index_count;
 } RoContext;
 
 DgError RoContextCreate(RoContext * const context, DgVec2I size);
 DgError RoContextCreateDW(RoContext * const this, void *display, void *window);
 void RoContextDestroy(RoContext * const context);
+
+DgError RoUploadTexture(RoContext * const this, const char *name, RoFormat format, size_t width, size_t height, const void *pixels, RoTextureFlags flags);
 
 DgError RoDrawBegin(RoContext * const this);
 DgError RoDrawEnd(RoContext * const this);

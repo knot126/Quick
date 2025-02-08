@@ -41,6 +41,10 @@ DgError EngineRun(Engine *this) {
 	
 	EngineLoadMainScene(this);
 	
+	char pixels[] = {255, 255, 255, 0, 0, 0, 0, 0, 0, 255, 255, 255};
+	
+	RoUploadTexture(&this->roc, "swaping", RO_FORMAT_RGB, 2, 2, &pixels, 0);
+	
 	while (!DgWindowShouldClose(&this->window)) {
 		double start = DgTime();
 		
@@ -54,7 +58,7 @@ DgError EngineRun(Engine *this) {
 			(RoVertex) { 0.0 * t, -0.5 * t, 1.0, 1.0, 0.0, 0, 0, 255, 255},
 		};
 		
-		if ((err = RoDrawPlainVerts(&this->roc, 3, verts))) {
+		if ((err = RoDrawVerts(&this->roc, 3, verts, "swaping"))) {
 			DgLog(DG_LOG_ERROR, "Error while adding verts: %s.", DgErrorString(err));
 		}
 		
